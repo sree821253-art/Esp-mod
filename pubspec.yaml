@@ -37,7 +37,7 @@ dependencies:
 
   # Remote database and networking
   supabase_flutter: ^2.9.1
-  http: ^1.4.0
+  http: ^1.1.0
 
   # Navigation (fully cross-platform)
   go_router: ^14.1.4
