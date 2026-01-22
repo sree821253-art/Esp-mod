@@ -70,7 +70,7 @@ class Device {
   int? gpioPin;
 int? statusGpioPin; // ADD THIS LINE - for reading actual switch state
 String? roomId;
-  ol isParent; // ADD THIS - ESP32 parent or ESP8266 child
+  bool isParent; // ADD THIS - ESP32 parent or ESP8266 child
 String? parentId; // ADD THIS - Reference to parent device
 String? staticIP;
   bool isOn;
