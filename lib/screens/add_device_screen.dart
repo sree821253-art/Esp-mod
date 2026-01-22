@@ -261,6 +261,16 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                           keyboardType: TextInputType.number,
                         ),
                         const SizedBox(height: 16),
+// Status GPIO Pin
+TextFormField(
+  controller: _statusGpioController, // You need to add this controller
+  decoration: const InputDecoration(
+    labelText: 'Status GPIO Pin (Optional)',
+    prefixIcon: Icon(Icons.sensors),
+    hintText: 'e.g., 4 - reads actual switch state',
+  ),
+  keyboardType: TextInputType.number,
+),
                         // Room selection
                         DropdownButtonFormField<String?>(
                           value: _selectedRoomId,
