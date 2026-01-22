@@ -230,19 +230,20 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                 ],
 
                 // Mode indicator
-                if (!isRemoteMode)
-                  GlassCard(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline,
-                          color: AppTheme.neonAmber,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Device control disabled in Local Auto mode',
+                // Mode indicator
+if (!isRemoteMode)
+  GlassCard(
+    padding: const EdgeInsets.all(16),
+    child: Row(
+      children: [
+        Icon(
+          Icons.info_outline,
+          color: AppTheme.neonAmber,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            'Local Auto mode - Manual override enabled', // CHANGED MESSAGE
                             style: TextStyle(
                               color: isDark ? Colors.white70 : Colors.black87,
                             ),
