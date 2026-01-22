@@ -323,23 +323,22 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
 
           // Fetch Status & Master Switch
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _ActionButton(
-                      icon: Icons.sync,
-                      label: 'Fetch Status',
-                      onTap: provider.isSyncing
-                          ? null
-                          : () => provider.syncDevices(),
-                      isLoading: provider.isSyncing,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
+          // Master Switch
+SliverToBoxAdapter(
+  child: Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: _ActionButton(
+      icon: Icons.lightbulb,
+      label: 'Master Switch',
+      onTap: () {
+        _showAuthDialog(context, () {
+          _showMasterSwitchOptions();
+        });
+      },
+      color: AppTheme.neonAmber,
+    ),
+  ),
+),
                     child: _ActionButton(
                       icon: Icons.lightbulb,
                       label: 'Master Switch',
