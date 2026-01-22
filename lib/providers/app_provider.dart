@@ -708,45 +708,67 @@ void _stopAutoSync() {
   // Arduino Code Generation
   String generateArduinoCode() {
   final buffer = StringBuffer();
+  
+  // Detect if generating for parent or child
+  final device = _devices.isNotEmpty ? _devices.first : null;
+  final isParent = device?.isParent ?? false;
+  
   buffer.writeln('/*');
-  buffer.writeln(' * $appName - Failsafe ESP8266/ESP32 Controller');
+  buffer.writeln(' * $appName - ${isParent ? 'PARENT (ESP32)' : 'CHILD (ESP8266)'} Controller');
   buffer.writeln(' * Generated: ${DateTime.now().toIso8601String()}');
-  buffer.writeln(' * Features: Watchdog, Status GPIO, Failsafe');
   buffer.writeln(' */');
   buffer.writeln();
-  buffer.writeln('#include <ESP8266WiFi.h>');
-  buffer.writeln('#include <ESP8266WebServer.h>');
+  
+  if (isParent) {
+    buffer.writeln('#include <WiFi.h>  // ESP32');
+    buffer.writeln('#include <WebServer.h>');
+    buffer.writeln('WebServer server(80);');
+  } else {
+    buffer.writeln('#include <ESP8266WiFi.h>  // ESP8266');
+    buffer.writeln('#include <ESP8266WebServer.h>');
+    buffer.writeln('ESP8266WebServer server(80);');
+  }
+  
   buffer.writeln();
-  buffer.writeln('// ========== CONFIGURATION ==========');
+  buffer.writeln('// ========== NETWORK CONFIGURATION ==========');
   
   if (_wifiNetworks.isNotEmpty) {
     buffer.writeln('const char* WIFI_SSID = "${_wifiNetworks.first.ssid}";');
     buffer.writeln('const char* WIFI_PASSWORD = "${_encryptionEnabled ? '********' : _wifiNetworks.first.password}";');
-  } else {
-    buffer.writeln('const char* WIFI_SSID = "YOUR_WIFI_SSID";');
-    buffer.writeln('const char* WIFI_PASSWORD = "YOUR_PASSWORD";');
   }
   
-  final device = _devices.isNotEmpty ? _devices.first : null;
+  buffer.writeln();
+  buffer.writeln('// Static IP Configuration');
+  final staticIP = device?.staticIP ?? (isParent ? '192.168.1.100' : '192.168.1.101');
+  buffer.writeln('IPAddress local_IP($staticIP);');
+  buffer.writeln('IPAddress gateway(192, 168, 1, 1);');
+  buffer.writeln('IPAddress subnet(255, 255, 255, 0);');
+  
+  if (!isParent && device?.parentId != null) {
+    final parent = _devices.firstWhere((d) => d.id == device.parentId, orElse: () => device);
+    buffer.writeln('const char* PARENT_IP = "${parent.ipAddress}";');
+  }
+  
   final gpioPin = device?.gpioPin ?? 2;
   final statusPin = device?.statusGpioPin ?? 4;
   
   buffer.writeln();
-  buffer.writeln('const int CONTROL_PIN = $gpioPin;  // Controls relay/LED');
-  buffer.writeln('const int STATUS_PIN = $statusPin;   // Reads actual switch state');
-  buffer.writeln('const unsigned long WATCHDOG_TIMEOUT = 60000; // 60 seconds');
-  buffer.writeln();
+  buffer.writeln('const int CONTROL_PIN = $gpioPin;');
+  buffer.writeln('const int STATUS_PIN = $statusPin;');
   buffer.writeln('bool ledState = false;');
-  buffer.writeln('unsigned long lastCommandTime = 0;');
-  buffer.writeln('ESP8266WebServer server(80);');
   buffer.writeln();
+  
   buffer.writeln('void setup() {');
   buffer.writeln('  Serial.begin(115200);');
   buffer.writeln('  pinMode(CONTROL_PIN, OUTPUT);');
-  buffer.writeln('  pinMode(STATUS_PIN, INPUT_PULLUP); // Read switch state');
+  buffer.writeln('  pinMode(STATUS_PIN, INPUT_PULLUP);');
   buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
   buffer.writeln('  ');
-  buffer.writeln('  // WiFi with failsafe');
+  buffer.writeln('  // Configure static IP');
+  buffer.writeln('  if (!WiFi.config(local_IP, gateway, subnet)) {');
+  buffer.writeln('    Serial.println("Static IP Failed!");');
+  buffer.writeln('  }');
+  buffer.writeln('  ');
   buffer.writeln('  WiFi.mode(WIFI_STA);');
   buffer.writeln('  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);');
   buffer.writeln('  Serial.print("Connecting");');
@@ -761,8 +783,6 @@ void _stopAutoSync() {
   buffer.writeln('    Serial.println("\\nConnected!");');
   buffer.writeln('    Serial.print("IP: ");');
   buffer.writeln('    Serial.println(WiFi.localIP());');
-  buffer.writeln('  } else {');
-  buffer.writeln('    Serial.println("\\nFailed! Running offline...");');
   buffer.writeln('  }');
   buffer.writeln('  ');
   buffer.writeln('  server.on("/", handleRoot);');
@@ -770,58 +790,57 @@ void _stopAutoSync() {
   buffer.writeln('  server.on("/led/on", handleLedOn);');
   buffer.writeln('  server.on("/led/off", handleLedOff);');
   buffer.writeln('  server.begin();');
-  buffer.writeln('  lastCommandTime = millis();');
   buffer.writeln('}');
   buffer.writeln();
   buffer.writeln('void loop() {');
   buffer.writeln('  server.handleClient();');
   buffer.writeln('  ');
-  buffer.writeln('  // Read actual switch state from STATUS_PIN');
-  buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN); // Active LOW');
+  buffer.writeln('  // Monitor physical switch');
+  buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
   buffer.writeln('  if (actualState != ledState) {');
-  buffer.writeln('    ledState = actualState; // Sync with physical switch');
+  buffer.writeln('    ledState = actualState;');
   buffer.writeln('    digitalWrite(CONTROL_PIN, ledState ? HIGH : LOW);');
-  buffer.writeln('    Serial.println(ledState ? "Manual ON" : "Manual OFF");');
-  buffer.writeln('  }');
-  buffer.writeln('  ');
-  buffer.writeln('  // Watchdog: Reset if no commands for too long');
-  buffer.writeln('  if (millis() - lastCommandTime > WATCHDOG_TIMEOUT) {');
-  buffer.writeln('    lastCommandTime = millis();');
-  buffer.writeln('    // Could add WiFi reconnect here if needed');
+  if (!isParent && device?.parentId != null) {
+    buffer.writeln('    notifyParent(); // Inform parent of state change');
+  }
   buffer.writeln('  }');
   buffer.writeln('}');
   buffer.writeln();
+  
+  // Add handlers
   buffer.writeln('void handleRoot() {');
-  buffer.writeln('  String html = "<h1>$appName Device</h1>";');
-  buffer.writeln('  html += "<p>Status: " + String(ledState ? "ON" : "OFF") + "</p>";');
+  buffer.writeln('  String html = "<h1>${isParent ? 'PARENT' : 'CHILD'} Device</h1>";');
   buffer.writeln('  html += "<p>IP: " + WiFi.localIP().toString() + "</p>";');
+  buffer.writeln('  html += "<p>Status: " + String(ledState ? "ON" : "OFF") + "</p>";');
   buffer.writeln('  server.send(200, "text/html", html);');
   buffer.writeln('}');
   buffer.writeln();
   buffer.writeln('void handleStatus() {');
-  buffer.writeln('  // Return actual state from STATUS_PIN');
   buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
-  buffer.writeln('  ledState = actualState; // Sync');
-  buffer.writeln('  String response = ledState ? "on" : "off";');
-  buffer.writeln('  server.send(200, "text/plain", response);');
-  buffer.writeln('  lastCommandTime = millis();');
+  buffer.writeln('  ledState = actualState;');
+  buffer.writeln('  server.send(200, "text/plain", ledState ? "on" : "off");');
   buffer.writeln('}');
   buffer.writeln();
   buffer.writeln('void handleLedOn() {');
   buffer.writeln('  ledState = true;');
   buffer.writeln('  digitalWrite(CONTROL_PIN, HIGH);');
   buffer.writeln('  server.send(200, "text/plain", "ON");');
-  buffer.writeln('  lastCommandTime = millis();');
-  buffer.writeln('  Serial.println("Remote ON");');
   buffer.writeln('}');
   buffer.writeln();
   buffer.writeln('void handleLedOff() {');
   buffer.writeln('  ledState = false;');
   buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
   buffer.writeln('  server.send(200, "text/plain", "OFF");');
-  buffer.writeln('  lastCommandTime = millis();');
-  buffer.writeln('  Serial.println("Remote OFF");');
   buffer.writeln('}');
+  
+  if (!isParent && device?.parentId != null) {
+    buffer.writeln();
+    buffer.writeln('void notifyParent() {');
+    buffer.writeln('  // TODO: Send HTTP request to parent');
+    buffer.writeln('  // WiFiClient client;');
+    buffer.writeln('  // client.connect(PARENT_IP, 80);');
+    buffer.writeln('}');
+  }
   
   return buffer.toString();
 }
