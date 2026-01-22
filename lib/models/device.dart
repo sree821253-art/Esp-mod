@@ -92,10 +92,12 @@ String? staticIP;
   required this.type,
   required this.ipAddress,
   this.gpioPin,
-  this.statusGpioPin, // ADD THIS LINE
+  this.statusGpioPin,
   this.roomId,
-    this.roomId,
-    this.isOn = false,
+  this.isParent = false, // ADD THIS
+  this.parentId, // ADD THIS
+  this.staticIP, // ADD THIS
+  this.isOn = false,
     this.isOnline = false,
     this.batteryLevel,
     this.hasBattery = false,
