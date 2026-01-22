@@ -449,14 +449,20 @@ void _stopAutoSync() {
 
   // Toggle Device - REAL HTTP COMMUNICATION
   Future<bool> toggleDevice(String id) async {
-    final index = _devices.indexWhere((d) => d.id == id);
-    if (index == -1) return false;
+  final index = _devices.indexWhere((d) => d.id == id);
+  if (index == -1) return false;
 
-    if (_appMode == AppMode.localAuto) {
-      return false; // Can't control in local auto mode
-    }
-
-    final device = _devices[index];
+  final device = _devices[index];
+  
+  // Allow manual override even in Local Auto mode
+  if (_appMode == AppMode.localAuto) {
+    _addLog(
+      deviceId: device.id,
+      deviceName: device.name,
+      type: LogType.info,
+      action: 'Manual override in Local Auto mode',
+    );
+  }
     final newState = !device.isOn;
 
     // Use REAL HTTP communication
