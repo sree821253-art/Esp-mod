@@ -19,8 +19,9 @@ class AddDeviceScreen extends StatefulWidget {
 class _AddDeviceScreenState extends State<AddDeviceScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _ipController = TextEditingController();
-  final _gpioController = TextEditingController();
+final _ipController = TextEditingController();
+final _gpioController = TextEditingController();
+final _statusGpioController = TextEditingController(); // ADD THIS LINE
 
   DeviceType _selectedType = DeviceType.light;
   String? _selectedRoomId;
