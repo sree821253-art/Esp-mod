@@ -400,12 +400,13 @@ TextFormField(
 
     final provider = context.read<AppProvider>();
     final device = Device(
-      id: const Uuid().v4(),
-      name: _nameController.text.trim(),
-      type: _selectedType,
-      ipAddress: _ipController.text.trim(),
-      gpioPin: int.tryParse(_gpioController.text),
-      roomId: _selectedRoomId,
+  id: const Uuid().v4(),
+  name: _nameController.text.trim(),
+  type: _selectedType,
+  ipAddress: _ipController.text.trim(),
+  gpioPin: int.tryParse(_gpioController.text),
+  statusGpioPin: int.tryParse(_statusGpioController.text), // ADD THIS LINE
+  roomId: _selectedRoomId,
       hasBattery: _hasBattery,
       batteryLevel: _hasBattery ? 100 : null,
       isOnline: true, // Assume online initially
