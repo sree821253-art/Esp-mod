@@ -9,6 +9,7 @@ import '../models/device.dart';
 import '../models/room.dart';
 import '../models/log_entry.dart';
 import '../models/wifi_network.dart';
+import '../services/esp_service.dart';
 
 enum AppMode { remote, localAuto }
 
@@ -16,6 +17,9 @@ class AppProvider extends ChangeNotifier {
   // Constants
   static const String authKey = 'hodo8212';
   static const int emergencyStopLevel = 98;
+
+  // ESP Service
+  final EspService _espService = EspService();
 
   // State
   bool _isDarkMode = true;
@@ -199,16 +203,11 @@ class AppProvider extends ChangeNotifier {
         int newLevel = device.waterLevel;
 
         if (device.isOn) {
-          // Pump is filling - increase water level
-          newLevel = (device.waterLevel + random.nextInt(5) + 1)
-              .clamp(0, 100);
+          newLevel = (device.waterLevel + random.nextInt(5) + 1).clamp(0, 100);
         } else {
-          // Water is draining - decrease level slowly
-          newLevel = (device.waterLevel - random.nextInt(3))
-              .clamp(0, 100);
+          newLevel = (device.waterLevel - random.nextInt(3)).clamp(0, 100);
         }
 
-        // Apply auto-mode logic
         bool shouldBeOn = device.isOn;
         if (_appMode == AppMode.remote) {
           if (newLevel <= _pumpMinThreshold && !device.isOn) {
@@ -232,7 +231,6 @@ class AppProvider extends ChangeNotifier {
           }
         }
 
-        // Emergency stop at 98%
         if (newLevel >= emergencyStopLevel && device.isOn) {
           shouldBeOn = false;
           _addLog(
@@ -271,7 +269,7 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Sync
+  // Sync - REAL HTTP COMMUNICATION
   Future<void> syncDevices() async {
     _isSyncing = true;
     _syncProgress = 0;
@@ -284,29 +282,42 @@ class AppProvider extends ChangeNotifier {
       action: 'Device sync started',
     );
 
-    // Simulate 10-20 second sync window
     final totalDevices = _devices.length;
-    final delayPerDevice = totalDevices > 0
-        ? (15000 / totalDevices).round()
-        : 1000;
+    if (totalDevices == 0) {
+      await Future.delayed(const Duration(seconds: 2));
+      _syncProgress = 1.0;
+      _isSyncing = false;
+      notifyListeners();
+      return;
+    }
+
+    int onlineCount = 0;
 
     for (int i = 0; i < _devices.length; i++) {
-      await Future.delayed(Duration(milliseconds: delayPerDevice));
+      final device = _devices[i];
 
-      // Simulate fetching device status
-      final random = math.Random();
-      _devices[i] = _devices[i].copyWith(
-        isOnline: random.nextDouble() > 0.15,
-        lastSeen: DateTime.now(),
-      );
+      // Use REAL HTTP communication
+      final status = await _espService.getDeviceStatus(device.ipAddress);
+
+      if (status != null) {
+        _devices[i] = device.copyWith(
+          isOnline: true,
+          isOn: status['isOn'] ?? false,
+          lastSeen: DateTime.now(),
+        );
+        onlineCount++;
+      } else {
+        _devices[i] = device.copyWith(
+          isOnline: false,
+          lastSeen: DateTime.now(),
+        );
+      }
 
       _syncProgress = (i + 1) / totalDevices;
       notifyListeners();
-    }
-
-    if (_devices.isEmpty) {
-      await Future.delayed(const Duration(seconds: 2));
-      _syncProgress = 1.0;
+      
+      // Small delay between requests to avoid overwhelming network
+      await Future.delayed(const Duration(milliseconds: 200));
     }
 
     _addLog(
@@ -314,8 +325,7 @@ class AppProvider extends ChangeNotifier {
       deviceName: 'System',
       type: LogType.sync,
       action: 'Device sync completed',
-      details:
-          '${onlineDevices.length}/${_devices.length} devices online',
+      details: '$onlineCount/${_devices.length} devices online',
     );
 
     _isSyncing = false;
@@ -323,7 +333,7 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Master Switch
+  // Master Switch - REAL HTTP COMMUNICATION
   Future<bool> masterSwitch(String key, bool turnOn) async {
     if (key != authKey) return false;
 
@@ -332,14 +342,22 @@ class AppProvider extends ChangeNotifier {
     int failCount = 0;
 
     for (final light in lights) {
-      // Simulate sending command
-      await Future.delayed(const Duration(milliseconds: 200));
+      bool success;
+      
+      if (turnOn) {
+        success = await _espService.turnDeviceOn(light.ipAddress);
+      } else {
+        success = await _espService.turnDeviceOff(light.ipAddress);
+      }
 
-      final success = math.Random().nextDouble() > 0.1;
       if (success) {
         final index = _devices.indexWhere((d) => d.id == light.id);
         if (index != -1) {
-          _devices[index] = _devices[index].copyWith(isOn: turnOn);
+          _devices[index] = _devices[index].copyWith(
+            isOn: turnOn,
+            isOnline: true,
+            lastSeen: DateTime.now(),
+          );
           successCount++;
         }
         _addLog(
@@ -357,6 +375,9 @@ class AppProvider extends ChangeNotifier {
           action: 'Master Switch command failed',
         );
       }
+      
+      // Small delay between commands
+      await Future.delayed(const Duration(milliseconds: 200));
     }
 
     _addLog(
@@ -408,6 +429,7 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Toggle Device - REAL HTTP COMMUNICATION
   Future<bool> toggleDevice(String id) async {
     final index = _devices.indexWhere((d) => d.id == id);
     if (index == -1) return false;
@@ -419,12 +441,20 @@ class AppProvider extends ChangeNotifier {
     final device = _devices[index];
     final newState = !device.isOn;
 
-    // Simulate command send
-    await Future.delayed(const Duration(milliseconds: 300));
-    final success = math.Random().nextDouble() > 0.1;
+    // Use REAL HTTP communication
+    bool success;
+    if (newState) {
+      success = await _espService.turnDeviceOn(device.ipAddress);
+    } else {
+      success = await _espService.turnDeviceOff(device.ipAddress);
+    }
 
     if (success) {
-      _devices[index] = device.copyWith(isOn: newState);
+      _devices[index] = device.copyWith(
+        isOn: newState,
+        isOnline: true,
+        lastSeen: DateTime.now(),
+      );
       _addLog(
         deviceId: device.id,
         deviceName: device.name,
@@ -435,34 +465,76 @@ class AppProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } else {
+      _devices[index] = device.copyWith(
+        isOnline: false,
+        lastSeen: DateTime.now(),
+      );
       _addLog(
         deviceId: device.id,
         deviceName: device.name,
         type: LogType.error,
-        action: 'Command failed',
+        action: 'Command failed - Device offline',
       );
       notifyListeners();
       return false;
     }
   }
 
-  void setBrightness(String id, int brightness) {
+  // Set Brightness - REAL HTTP COMMUNICATION
+  void setBrightness(String id, int brightness) async {
     final index = _devices.indexWhere((d) => d.id == id);
     if (index != -1) {
-      _devices[index] =
-          _devices[index].copyWith(brightness: brightness.clamp(0, 100));
-      _saveToStorage();
+      final device = _devices[index];
+      
+      // Update local state immediately for UI responsiveness
+      _devices[index] = device.copyWith(brightness: brightness.clamp(0, 100));
       notifyListeners();
+      
+      // Send to ESP in background
+      final success = await _espService.setBrightness(
+        device.ipAddress,
+        brightness,
+      );
+      
+      if (!success) {
+        _addLog(
+          deviceId: device.id,
+          deviceName: device.name,
+          type: LogType.error,
+          action: 'Failed to set brightness',
+        );
+      }
+      
+      _saveToStorage();
     }
   }
 
-  void setFanSpeed(String id, int speed) {
+  // Set Fan Speed - REAL HTTP COMMUNICATION
+  void setFanSpeed(String id, int speed) async {
     final index = _devices.indexWhere((d) => d.id == id);
     if (index != -1) {
-      _devices[index] =
-          _devices[index].copyWith(fanSpeed: speed.clamp(1, 5));
-      _saveToStorage();
+      final device = _devices[index];
+      
+      // Update local state immediately
+      _devices[index] = device.copyWith(fanSpeed: speed.clamp(1, 5));
       notifyListeners();
+      
+      // Send to ESP in background
+      final success = await _espService.setFanSpeed(
+        device.ipAddress,
+        speed,
+      );
+      
+      if (!success) {
+        _addLog(
+          deviceId: device.id,
+          deviceName: device.name,
+          type: LogType.error,
+          action: 'Failed to set fan speed',
+        );
+      }
+      
+      _saveToStorage();
     }
   }
 
@@ -492,7 +564,6 @@ class AppProvider extends ChangeNotifier {
     final room = _rooms.firstWhere((r) => r.id == id);
     _rooms.removeWhere((r) => r.id == id);
 
-    // Unassign devices from this room
     for (int i = 0; i < _devices.length; i++) {
       if (_devices[i].roomId == id) {
         _devices[i] = _devices[i].copyWith(roomId: null);
@@ -567,7 +638,6 @@ class AppProvider extends ChangeNotifier {
       ),
     );
 
-    // Keep only last 1000 logs
     if (_logs.length > 1000) {
       _logs = _logs.sublist(0, 1000);
     }
@@ -617,9 +687,10 @@ class AppProvider extends ChangeNotifier {
     final buffer = StringBuffer();
 
     buffer.writeln('/*');
-    buffer.writeln(' * $appName - Arduino/ESP Device Controller');
+    buffer.writeln(' * $appName - ESP8266/ESP32 Device Controller');
     buffer.writeln(' * Generated: ${DateTime.now().toIso8601String()}');
     buffer.writeln(' * Devices: ${_devices.length}');
+    buffer.writeln(' * Compatible with Flutter HTTP endpoints');
     buffer.writeln(' */');
     buffer.writeln();
     buffer.writeln('#include <ESP8266WiFi.h>');
@@ -627,8 +698,7 @@ class AppProvider extends ChangeNotifier {
     buffer.writeln();
     buffer.writeln('// ========== WIFI CONFIGURATION ==========');
     if (_wifiNetworks.isNotEmpty) {
-      buffer.writeln(
-          'const char* WIFI_SSID = "${_wifiNetworks.first.ssid}";');
+      buffer.writeln('const char* WIFI_SSID = "${_wifiNetworks.first.ssid}";');
       buffer.writeln(
           'const char* WIFI_PASSWORD = "${_encryptionEnabled ? '********' : _wifiNetworks.first.password}";');
     } else {
@@ -636,132 +706,63 @@ class AppProvider extends ChangeNotifier {
       buffer.writeln('const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";');
     }
     buffer.writeln();
-    buffer.writeln('// ========== THRESHOLD CONFIGURATION ==========');
-    buffer.writeln('const int PUMP_MIN_THRESHOLD = $_pumpMinThreshold;');
-    buffer.writeln('const int PUMP_MAX_THRESHOLD = $_pumpMaxThreshold;');
-    buffer.writeln('const int EMERGENCY_STOP_LEVEL = $emergencyStopLevel;');
+    buffer.writeln('// ========== PIN CONFIGURATION ==========');
+    
+    final device = _devices.isNotEmpty ? _devices.first : null;
+    final gpioPin = device?.gpioPin ?? 2;
+    
+    buffer.writeln('const int LED_PIN = $gpioPin;  // GPIO pin for LED/Relay');
+    buffer.writeln('bool ledState = false;');
     buffer.writeln();
-    buffer.writeln('// ========== DEVICE CONFIGURATION ==========');
-
-    for (final device in _devices) {
-      buffer.writeln();
-      buffer.writeln('// ${device.name} (${device.type.displayName})');
-      buffer.writeln(
-          'const char* DEVICE_${device.id.toUpperCase().replaceAll('-', '_')}_NAME = "${device.name}";');
-      buffer.writeln(
-          'const char* DEVICE_${device.id.toUpperCase().replaceAll('-', '_')}_IP = "${device.ipAddress}";');
-      if (device.gpioPin != null) {
-        buffer.writeln(
-            'const int DEVICE_${device.id.toUpperCase().replaceAll('-', '_')}_GPIO = ${device.gpioPin};');
-      }
-    }
-
-    buffer.writeln();
-    buffer.writeln('// ========== GPIO PIN DEFINITIONS ==========');
-    for (final device in _devices) {
-      if (device.gpioPin != null) {
-        buffer.writeln(
-            '#define PIN_${device.name.toUpperCase().replaceAll(' ', '_')} ${device.gpioPin}');
-      }
-    }
-
-    buffer.writeln();
-    buffer.writeln('// ========== SERVER SETUP ==========');
     buffer.writeln('ESP8266WebServer server(80);');
     buffer.writeln();
     buffer.writeln('void setup() {');
     buffer.writeln('  Serial.begin(115200);');
-    buffer.writeln('  ');
-    buffer.writeln('  // Initialize GPIO pins');
-    for (final device in _devices) {
-      if (device.gpioPin != null) {
-        buffer.writeln(
-            '  pinMode(PIN_${device.name.toUpperCase().replaceAll(' ', '_')}, OUTPUT);');
-      }
-    }
+    buffer.writeln('  pinMode(LED_PIN, OUTPUT);');
+    buffer.writeln('  digitalWrite(LED_PIN, LOW);');
     buffer.writeln('  ');
     buffer.writeln('  // Connect to WiFi');
     buffer.writeln('  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);');
+    buffer.writeln('  Serial.print("Connecting to WiFi");');
     buffer.writeln('  while (WiFi.status() != WL_CONNECTED) {');
     buffer.writeln('    delay(500);');
     buffer.writeln('    Serial.print(".");');
     buffer.writeln('  }');
     buffer.writeln('  Serial.println("");');
-    buffer.writeln('  Serial.print("Connected! IP: ");');
+    buffer.writeln('  Serial.print("Connected! IP address: ");');
     buffer.writeln('  Serial.println(WiFi.localIP());');
     buffer.writeln('  ');
-    buffer.writeln('  // Setup HTTP routes');
+    buffer.writeln('  // Setup HTTP endpoints');
     buffer.writeln('  server.on("/status", handleStatus);');
-    buffer.writeln('  server.on("/control", handleControl);');
+    buffer.writeln('  server.on("/led/on", handleLedOn);');
+    buffer.writeln('  server.on("/led/off", handleLedOff);');
     buffer.writeln('  server.begin();');
+    buffer.writeln('  Serial.println("HTTP server started");');
     buffer.writeln('}');
     buffer.writeln();
     buffer.writeln('void loop() {');
     buffer.writeln('  server.handleClient();');
-
-    // Add pump auto logic
-    final pumps =
-        _devices.where((d) => d.type == DeviceType.waterPump).toList();
-    if (pumps.isNotEmpty) {
-      buffer.writeln('  ');
-      buffer.writeln('  // Pump auto-control logic');
-      buffer.writeln('  checkWaterLevels();');
-    }
-
     buffer.writeln('}');
     buffer.writeln();
     buffer.writeln('void handleStatus() {');
-    buffer.writeln('  String json = "{";');
-    buffer.writeln('  json += "\\"online\\": true,";');
-    buffer.writeln('  json += "\\"devices\\": [";');
-    buffer.writeln('  // Add device statuses here');
-    buffer.writeln('  json += "]";');
-    buffer.writeln('  json += "}";');
-    buffer.writeln('  server.send(200, "application/json", json);');
+    buffer.writeln('  String response = ledState ? "on" : "off";');
+    buffer.writeln('  server.send(200, "text/plain", response);');
+    buffer.writeln('  Serial.println("Status request: " + response);');
     buffer.writeln('}');
     buffer.writeln();
-    buffer.writeln('void handleControl() {');
-    buffer.writeln('  String device = server.arg("device");');
-    buffer.writeln('  String action = server.arg("action");');
-    buffer.writeln('  // Implement device control logic');
-    buffer.writeln('  server.send(200, "application/json", "{\\"success\\": true}");');
+    buffer.writeln('void handleLedOn() {');
+    buffer.writeln('  ledState = true;');
+    buffer.writeln('  digitalWrite(LED_PIN, HIGH);');
+    buffer.writeln('  server.send(200, "text/plain", "LED turned ON");');
+    buffer.writeln('  Serial.println("LED turned ON");');
     buffer.writeln('}');
-
-    if (pumps.isNotEmpty) {
-      buffer.writeln();
-      buffer.writeln('void checkWaterLevels() {');
-      buffer.writeln('  int waterLevel = analogRead(A0);');
-      buffer.writeln('  int percentage = map(waterLevel, 0, 1024, 0, 100);');
-      buffer.writeln('  ');
-      buffer.writeln('  // Emergency stop');
-      buffer.writeln('  if (percentage >= EMERGENCY_STOP_LEVEL) {');
-      for (final pump in pumps) {
-        if (pump.gpioPin != null) {
-          buffer.writeln(
-              '    digitalWrite(PIN_${pump.name.toUpperCase().replaceAll(' ', '_')}, LOW);');
-        }
-      }
-      buffer.writeln('    return;');
-      buffer.writeln('  }');
-      buffer.writeln('  ');
-      buffer.writeln('  // Auto control based on thresholds');
-      buffer.writeln('  if (percentage <= PUMP_MIN_THRESHOLD) {');
-      for (final pump in pumps) {
-        if (pump.gpioPin != null) {
-          buffer.writeln(
-              '    digitalWrite(PIN_${pump.name.toUpperCase().replaceAll(' ', '_')}, HIGH);');
-        }
-      }
-      buffer.writeln('  } else if (percentage >= PUMP_MAX_THRESHOLD) {');
-      for (final pump in pumps) {
-        if (pump.gpioPin != null) {
-          buffer.writeln(
-              '    digitalWrite(PIN_${pump.name.toUpperCase().replaceAll(' ', '_')}, LOW);');
-        }
-      }
-      buffer.writeln('  }');
-      buffer.writeln('}');
-    }
+    buffer.writeln();
+    buffer.writeln('void handleLedOff() {');
+    buffer.writeln('  ledState = false;');
+    buffer.writeln('  digitalWrite(LED_PIN, LOW);');
+    buffer.writeln('  server.send(200, "text/plain", "LED turned OFF");');
+    buffer.writeln('  Serial.println("LED turned OFF");');
+    buffer.writeln('}');
 
     return buffer.toString();
   }
@@ -780,41 +781,35 @@ class AppProvider extends ChangeNotifier {
       _encryptionEnabled = prefs.getBool('encryptionEnabled') ?? false;
       _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? true;
 
-      // Load devices
       final devicesJson = prefs.getString('devices');
       if (devicesJson != null) {
         final List<dynamic> devicesList = jsonDecode(devicesJson);
         _devices = devicesList.map((d) => Device.fromJson(d)).toList();
       }
 
-      // Load rooms
       final roomsJson = prefs.getString('rooms');
       if (roomsJson != null) {
         final List<dynamic> roomsList = jsonDecode(roomsJson);
         _rooms = roomsList.map((r) => Room.fromJson(r)).toList();
       }
 
-      // Load logs
       final logsJson = prefs.getString('logs');
       if (logsJson != null) {
         final List<dynamic> logsList = jsonDecode(logsJson);
         _logs = logsList.map((l) => LogEntry.fromJson(l)).toList();
       }
 
-      // Load wifi networks
       final wifiJson = prefs.getString('wifiNetworks');
       if (wifiJson != null) {
         final List<dynamic> wifiList = jsonDecode(wifiJson);
-        _wifiNetworks =
-            wifiList.map((w) => WifiNetwork.fromJson(w)).toList();
+        _wifiNetworks = wifiList.map((w) => WifiNetwork.fromJson(w)).toList();
       }
 
-      // Add some demo data if empty
       if (_devices.isEmpty) {
         _addDemoData();
       }
     } catch (e) {
-      // Handle error silently, will use defaults
+      // Handle error silently
     }
   }
 
@@ -853,7 +848,6 @@ class AppProvider extends ChangeNotifier {
   }
 
   void _addDemoData() {
-    // Add demo rooms
     _rooms = [
       Room(id: _uuid.v4(), name: 'Living Room', type: RoomType.livingRoom),
       Room(id: _uuid.v4(), name: 'Kitchen', type: RoomType.kitchen),
@@ -861,7 +855,6 @@ class AppProvider extends ChangeNotifier {
       Room(id: _uuid.v4(), name: 'Garage', type: RoomType.garage),
     ];
 
-    // Add demo devices
     _devices = [
       Device(
         id: _uuid.v4(),
