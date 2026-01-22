@@ -40,6 +40,7 @@ class AppProvider extends ChangeNotifier {
   List<WifiNetwork> _wifiNetworks = [];
 
   Timer? _simulationTimer;
+Timer? _autoSyncTimer; // ADD THIS LINE
   final _uuid = const Uuid();
 
   // Getters
@@ -68,14 +69,31 @@ class AppProvider extends ChangeNotifier {
 
   // Initialize
   Future<void> initialize() async {
-    await _loadFromStorage();
-    _isInitialized = true;
-    notifyListeners();
+  await _loadFromStorage();
+  _isInitialized = true;
+  notifyListeners();
 
-    if (_isSimulationEnabled) {
-      _startSimulation();
-    }
+  if (_isSimulationEnabled) {
+    _startSimulation();
   }
+  
+  // Start auto-sync every 10 seconds
+  _startAutoSync();
+}
+
+void _startAutoSync() {
+  _autoSyncTimer?.cancel();
+  _autoSyncTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    if (!_isSyncing && !_isSimulationEnabled) {
+      syncDevices();
+    }
+  });
+}
+
+void _stopAutoSync() {
+  _autoSyncTimer?.cancel();
+  _autoSyncTimer = null;
+}
 
   // Theme
   void toggleTheme() {
@@ -561,13 +579,12 @@ class AppProvider extends ChangeNotifier {
   }
 
   void deleteRoom(String id) {
-    final room = _rooms.firstWhere((r) => r.id == id);
-    _rooms.removeWhere((r) => r.id == id);
+  final room = _rooms.firstWhere((r) => r.id == id);
+  _rooms.removeWhere((r) => r.id == id);
 
-    for (int i = 0; i < _devices.length; i++) {
-      if (_devices[i].roomId == id) {
-        _devices[i] = _devices[i].copyWith(roomId: null);
-      }
+  // FIXED: Actually remove devices instead of just unassigning
+  _devices.removeWhere((d) => d.roomId == id);
+      
     }
 
     _addLog(
@@ -937,8 +954,9 @@ class AppProvider extends ChangeNotifier {
   String generateUuid() => _uuid.v4();
 
   @override
-  void dispose() {
-    _simulationTimer?.cancel();
-    super.dispose();
-  }
+void dispose() {
+  _simulationTimer?.cancel();
+  _autoSyncTimer?.cancel(); // ADD THIS LINE
+  super.dispose();
+}
 }
