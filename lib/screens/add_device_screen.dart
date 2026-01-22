@@ -34,12 +34,13 @@ final _statusGpioController = TextEditingController(); // ADD THIS LINE
   }
 
   @override
-  void dispose() {
-    _nameController.dispose();
-    _ipController.dispose();
-    _gpioController.dispose();
-    super.dispose();
-  }
+void dispose() {
+  _nameController.dispose();
+  _ipController.dispose();
+  _gpioController.dispose();
+  _statusGpioController.dispose(); // ADD THIS LINE
+  super.dispose();
+}
 
   @override
   Widget build(BuildContext context) {
