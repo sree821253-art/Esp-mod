@@ -68,7 +68,8 @@ class Device {
   DeviceType type;
   String ipAddress;
   int? gpioPin;
-  String? roomId;
+int? statusGpioPin; // ADD THIS LINE - for reading actual switch state
+String? roomId;
   bool isOn;
   bool isOnline;
   int? batteryLevel;
@@ -83,11 +84,13 @@ class Device {
   DateTime createdAt;
 
   Device({
-    required this.id,
-    required this.name,
-    required this.type,
-    required this.ipAddress,
-    this.gpioPin,
+  required this.id,
+  required this.name,
+  required this.type,
+  required this.ipAddress,
+  this.gpioPin,
+  this.statusGpioPin, // ADD THIS LINE
+  this.roomId,
     this.roomId,
     this.isOn = false,
     this.isOnline = false,
@@ -105,12 +108,13 @@ class Device {
         createdAt = createdAt ?? DateTime.now();
 
   Device copyWith({
-    String? id,
-    String? name,
-    DeviceType? type,
-    String? ipAddress,
-    int? gpioPin,
-    String? roomId,
+  String? id,
+  String? name,
+  DeviceType? type,
+  String? ipAddress,
+  int? gpioPin,
+  int? statusGpioPin, // ADD THIS LINE
+  String? roomId,
     bool? isOn,
     bool? isOnline,
     int? batteryLevel,
@@ -125,12 +129,13 @@ class Device {
     DateTime? createdAt,
   }) {
     return Device(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      type: type ?? this.type,
-      ipAddress: ipAddress ?? this.ipAddress,
-      gpioPin: gpioPin ?? this.gpioPin,
-      roomId: roomId ?? this.roomId,
+  id: id ?? this.id,
+  name: name ?? this.name,
+  type: type ?? this.type,
+  ipAddress: ipAddress ?? this.ipAddress,
+  gpioPin: gpioPin ?? this.gpioPin,
+  statusGpioPin: statusGpioPin ?? this.statusGpioPin, // ADD THIS LINE
+  roomId: roomId ?? this.roomId,
       isOn: isOn ?? this.isOn,
       isOnline: isOnline ?? this.isOnline,
       batteryLevel: batteryLevel ?? this.batteryLevel,
@@ -147,12 +152,13 @@ class Device {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'type': type.index,
-        'ipAddress': ipAddress,
-        'gpioPin': gpioPin,
-        'roomId': roomId,
+  'id': id,
+  'name': name,
+  'type': type.index,
+  'ipAddress': ipAddress,
+  'gpioPin': gpioPin,
+  'statusGpioPin': statusGpioPin, // ADD THIS LINE
+  'roomId': roomId,
         'isOn': isOn,
         'isOnline': isOnline,
         'batteryLevel': batteryLevel,
@@ -168,12 +174,13 @@ class Device {
       };
 
   factory Device.fromJson(Map<String, dynamic> json) => Device(
-        id: json['id'],
-        name: json['name'],
-        type: DeviceType.values[json['type']],
-        ipAddress: json['ipAddress'],
-        gpioPin: json['gpioPin'],
-        roomId: json['roomId'],
+  id: json['id'],
+  name: json['name'],
+  type: DeviceType.values[json['type']],
+  ipAddress: json['ipAddress'],
+  gpioPin: json['gpioPin'],
+  statusGpioPin: json['statusGpioPin'], // ADD THIS LINE
+  roomId: json['roomId'],
         isOn: json['isOn'] ?? false,
         isOnline: json['isOnline'] ?? false,
         batteryLevel: json['batteryLevel'],
