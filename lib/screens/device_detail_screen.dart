@@ -184,6 +184,17 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                             ? AppTheme.neonGreen
                             : AppTheme.neonRed,
                       ),
+                      if (device.statusGpioPin != null)
+  _InfoRow(
+    icon: device.physicalSwitchOn
+        ? Icons.toggle_on
+        : Icons.toggle_off,
+    label: 'Physical Switch',
+    value: device.physicalSwitchOn ? 'ON' : 'OFF',
+    color: device.physicalSwitchOn
+        ? AppTheme.neonGreen
+        : Colors.grey,
+  ),
                       if (device.hasBattery && device.batteryLevel != null)
                         _InfoRow(
                           icon: device.batteryLevel! > 20
