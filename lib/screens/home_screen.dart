@@ -216,72 +216,79 @@ class _HomeScreenState extends State<HomeScreen> {
                     isDark: isDark,
                     onToggle: () => provider.toggleTheme(),
                   ),
+                  const SizedBox(width: 8),  // ADD THIS
+// Manual refresh button
+GestureDetector(  // ADD THIS ENTIRE SECTION
+  onTap: provider.isSyncing
+      ? null
+      : () => provider.syncDevices(silent: false),
+  child: Container(
+    padding: const EdgeInsets.all(8),
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: isDark
+          ? AppTheme.circuitLine
+          : Colors.grey.shade200,
+      border: Border.all(
+        color: isDark
+            ? AppTheme.neonCyan.withOpacity(0.5)
+            : Colors.grey.shade300,
+      ),
+    ),
+    child: provider.isSyncing
+        ? SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation(
+                isDark ? AppTheme.neonCyan : Theme.of(context).primaryColor,
+              ),
+            ),
+          )
+        : Icon(
+            Icons.refresh,
+            size: 20,
+            color: isDark ? AppTheme.neonCyan : Theme.of(context).primaryColor,
+          ),
+  ),
+),
                 ],
               ),
             ),
           ),
 
-          // Sync Progress
-          if (provider.isSyncing)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: GlassCard(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation(
-                                isDark
-                                    ? AppTheme.neonCyan
-                                    : Theme.of(context).primaryColor,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Syncing device states...',
-                            style: TextStyle(
-                              color: isDark ? Colors.white70 : Colors.black87,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: provider.syncProgress,
-                          backgroundColor: isDark
-                              ? AppTheme.circuitLine
-                              : Colors.grey.shade200,
-                          valueColor: AlwaysStoppedAnimation(
-                            isDark
-                                ? AppTheme.neonCyan
-                                : Theme.of(context).primaryColor,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${(provider.syncProgress * 100).toInt()}% complete',
-                        style: TextStyle(
-                          color: isDark ? Colors.white38 : Colors.black38,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+          // Optional: Small sync indicator (not intrusive)
+if (provider.isSyncing)
+  SliverToBoxAdapter(
+    child: Padding(
+      padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 12,
+            height: 12,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation(
+                isDark
+                    ? AppTheme.neonCyan.withOpacity(0.5)
+                    : Theme.of(context).primaryColor.withOpacity(0.5),
               ),
             ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Syncing...',
+            style: TextStyle(
+              color: isDark ? Colors.white38 : Colors.black38,
+              fontSize: 11,
+            ),
+          ),
+        ],
+      ),
+    ),
+  ),
 
           // Quick Stats
           SliverToBoxAdapter(
