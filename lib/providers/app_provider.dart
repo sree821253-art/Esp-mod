@@ -81,7 +81,7 @@ class AppProvider extends ChangeNotifier {
 
   void _startAutoSync() {
   _autoSyncTimer?.cancel();
-  _autoSyncTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+  _autoSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
     if (!_isSyncing && !_isSimulationEnabled) {
       syncDevices(silent: true);  // CHANGED: Add silent: true
     }
