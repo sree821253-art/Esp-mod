@@ -80,13 +80,13 @@ class AppProvider extends ChangeNotifier {
   }
 
   void _startAutoSync() {
-    _autoSyncTimer?.cancel();
-    _autoSyncTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-      if (!_isSyncing && !_isSimulationEnabled) {
-        syncDevices();
-      }
-    });
-  }
+  _autoSyncTimer?.cancel();
+  _autoSyncTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+    if (!_isSyncing && !_isSimulationEnabled) {
+      syncDevices(silent: true);  // CHANGED: Add silent: true
+    }
+  });
+}
 
   // Theme
   void toggleTheme() {
