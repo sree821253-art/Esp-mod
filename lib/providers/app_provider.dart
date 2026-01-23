@@ -34,13 +34,13 @@ class AppProvider extends ChangeNotifier {
   int _pumpMinThreshold = 20;
   int _pumpMaxThreshold = 80;
 
-  List<Device> _devices = [];
-  List<Room> _rooms = [];
-  List<LogEntry> _logs = [];
-  List<WifiNetwork> _wifiNetworks = [];
+  final List<Device> _devices = [];
+  final List<Room> _rooms = [];
+  final List<LogEntry> _logs = [];
+  final List<WifiNetwork> _wifiNetworks = [];
 
   Timer? _simulationTimer;
-Timer? _autoSyncTimer; // ADD THIS LINE
+  Timer? _autoSyncTimer;
   final _uuid = const Uuid();
 
   // Getters
@@ -69,31 +69,25 @@ Timer? _autoSyncTimer; // ADD THIS LINE
 
   // Initialize
   Future<void> initialize() async {
-  await _loadFromStorage();
-  _isInitialized = true;
-  notifyListeners();
+    await _loadFromStorage();
+    _isInitialized = true;
+    notifyListeners();
 
-  if (_isSimulationEnabled) {
-    _startSimulation();
-  }
-  
-  // Start auto-sync every 10 seconds
-  _startAutoSync();
-}
-
-void _startAutoSync() {
-  _autoSyncTimer?.cancel();
-  _autoSyncTimer = Timer.periodic(const Duration(seconds: 10), (_) {
-    if (!_isSyncing && !_isSimulationEnabled) {
-      syncDevices();
+    if (_isSimulationEnabled) {
+      _startSimulation();
     }
-  });
-}
+    
+    _startAutoSync();
+  }
 
-void _stopAutoSync() {
-  _autoSyncTimer?.cancel();
-  _autoSyncTimer = null;
-}
+  void _startAutoSync() {
+    _autoSyncTimer?.cancel();
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!_isSyncing && !_isSimulationEnabled) {
+        syncDevices();
+      }
+    });
+  }
 
   // Theme
   void toggleTheme() {
@@ -210,13 +204,11 @@ void _stopAutoSync() {
     for (int i = 0; i < _devices.length; i++) {
       final device = _devices[i];
 
-      // Simulate online status
       _devices[i] = device.copyWith(
         isOnline: random.nextDouble() > 0.1,
         lastSeen: DateTime.now(),
       );
 
-      // Simulate water level changes for pumps
       if (device.type == DeviceType.waterPump) {
         int newLevel = device.waterLevel;
 
@@ -266,7 +258,6 @@ void _stopAutoSync() {
         );
       }
 
-      // Simulate gas sensor values
       if (device.type == DeviceType.gasSensor) {
         _devices[i] = device.copyWith(
           lpgValue: (random.nextDouble() * 100).clamp(0, 100),
@@ -274,7 +265,6 @@ void _stopAutoSync() {
         );
       }
 
-      // Simulate battery
       if (device.hasBattery && device.batteryLevel != null) {
         _devices[i] = _devices[i].copyWith(
           batteryLevel:
@@ -314,7 +304,6 @@ void _stopAutoSync() {
     for (int i = 0; i < _devices.length; i++) {
       final device = _devices[i];
 
-      // Use REAL HTTP communication
       final status = await _espService.getDeviceStatus(device.ipAddress);
 
       if (status != null) {
@@ -334,7 +323,6 @@ void _stopAutoSync() {
       _syncProgress = (i + 1) / totalDevices;
       notifyListeners();
       
-      // Small delay between requests to avoid overwhelming network
       await Future.delayed(const Duration(milliseconds: 200));
     }
 
@@ -394,7 +382,6 @@ void _stopAutoSync() {
         );
       }
       
-      // Small delay between commands
       await Future.delayed(const Duration(milliseconds: 200));
     }
 
@@ -410,7 +397,6 @@ void _stopAutoSync() {
     notifyListeners();
     return failCount == 0;
   }
-
   // Device Management
   void addDevice(Device device) {
     _devices.add(device);
@@ -449,23 +435,22 @@ void _stopAutoSync() {
 
   // Toggle Device - REAL HTTP COMMUNICATION
   Future<bool> toggleDevice(String id) async {
-  final index = _devices.indexWhere((d) => d.id == id);
-  if (index == -1) return false;
+    final index = _devices.indexWhere((d) => d.id == id);
+    if (index == -1) return false;
 
-  final device = _devices[index];
-  
-  // Allow manual override even in Local Auto mode
-  if (_appMode == AppMode.localAuto) {
-    _addLog(
-      deviceId: device.id,
-      deviceName: device.name,
-      type: LogType.info,
-      action: 'Manual override in Local Auto mode',
-    );
-  }
+    final device = _devices[index];
+    
+    if (_appMode == AppMode.localAuto) {
+      _addLog(
+        deviceId: device.id,
+        deviceName: device.name,
+        type: LogType.info,
+        action: 'Manual override in Local Auto mode',
+      );
+    }
+    
     final newState = !device.isOn;
 
-    // Use REAL HTTP communication
     bool success;
     if (newState) {
       success = await _espService.turnDeviceOn(device.ipAddress);
@@ -510,11 +495,9 @@ void _stopAutoSync() {
     if (index != -1) {
       final device = _devices[index];
       
-      // Update local state immediately for UI responsiveness
       _devices[index] = device.copyWith(brightness: brightness.clamp(0, 100));
       notifyListeners();
       
-      // Send to ESP in background
       final success = await _espService.setBrightness(
         device.ipAddress,
         brightness,
@@ -539,11 +522,9 @@ void _stopAutoSync() {
     if (index != -1) {
       final device = _devices[index];
       
-      // Update local state immediately
       _devices[index] = device.copyWith(fanSpeed: speed.clamp(1, 5));
       notifyListeners();
       
-      // Send to ESP in background
       final success = await _espService.setFanSpeed(
         device.ipAddress,
         speed,
@@ -585,19 +566,15 @@ void _stopAutoSync() {
   }
 
   void deleteRoom(String id) {
-  final room = _rooms.firstWhere((r) => r.id == id);
-  _rooms.removeWhere((r) => r.id == id);
-
-  // FIXED: Actually remove devices instead of just unassigning
-  _devices.removeWhere((d) => d.roomId == id);
-      
-    }
-
+    final roomToDelete = _rooms.firstWhere((r) => r.id == id);
+    _rooms.removeWhere((r) => r.id == id);
+    _devices.removeWhere((d) => d.roomId == id);
+    
     _addLog(
       deviceId: 'system',
       deviceName: 'System',
       type: LogType.info,
-      action: 'Room deleted: ${room.name}',
+      action: 'Room deleted: ${roomToDelete.name}',
     );
     _saveToStorage();
     notifyListeners();
@@ -707,143 +684,137 @@ void _stopAutoSync() {
 
   // Arduino Code Generation
   String generateArduinoCode() {
-  final buffer = StringBuffer();
-  
-  // Detect if generating for parent or child
-  final device = _devices.isNotEmpty ? _devices.first : null;
-  final isParent = device?.isParent ?? false;
-  
-  buffer.writeln('/*');
-  buffer.writeln(' * $appName - ${isParent ? 'PARENT (ESP32)' : 'CHILD (ESP8266)'} Controller');
-  buffer.writeln(' * Generated: ${DateTime.now().toIso8601String()}');
-  buffer.writeln(' */');
-  buffer.writeln();
-  
-  if (isParent) {
-    buffer.writeln('#include <WiFi.h>  // ESP32');
-    buffer.writeln('#include <WebServer.h>');
-    buffer.writeln('WebServer server(80);');
-  } else {
-    buffer.writeln('#include <ESP8266WiFi.h>  // ESP8266');
-    buffer.writeln('#include <ESP8266WebServer.h>');
-    buffer.writeln('ESP8266WebServer server(80);');
-  }
-  
-  buffer.writeln();
-  buffer.writeln('// ========== NETWORK CONFIGURATION ==========');
-  
-  if (_wifiNetworks.isNotEmpty) {
-    buffer.writeln('const char* WIFI_SSID = "${_wifiNetworks.first.ssid}";');
-    buffer.writeln('const char* WIFI_PASSWORD = "${_encryptionEnabled ? '********' : _wifiNetworks.first.password}";');
-  }
-  
-  buffer.writeln();
-  buffer.writeln('// Static IP Configuration');
-  final staticIP = device?.staticIP ?? (isParent ? '192.168.1.100' : '192.168.1.101');
-  buffer.writeln('IPAddress local_IP($staticIP);');
-  buffer.writeln('IPAddress gateway(192, 168, 1, 1);');
-  buffer.writeln('IPAddress subnet(255, 255, 255, 0);');
-  
-  if (!isParent && device?.parentId != null) {
-    final parent = _devices.firstWhere((d) => d.id == device.parentId, orElse: () => device);
-    buffer.writeln('const char* PARENT_IP = "${parent.ipAddress}";');
-  }
-  
-  final gpioPin = device?.gpioPin ?? 2;
-  final statusPin = device?.statusGpioPin ?? 4;
-  
-  buffer.writeln();
-  buffer.writeln('const int CONTROL_PIN = $gpioPin;');
-  buffer.writeln('const int STATUS_PIN = $statusPin;');
-  buffer.writeln('bool ledState = false;');
-  buffer.writeln();
-  
-  buffer.writeln('void setup() {');
-  buffer.writeln('  Serial.begin(115200);');
-  buffer.writeln('  pinMode(CONTROL_PIN, OUTPUT);');
-  buffer.writeln('  pinMode(STATUS_PIN, INPUT_PULLUP);');
-  buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
-  buffer.writeln('  ');
-  buffer.writeln('  // Configure static IP');
-  buffer.writeln('  if (!WiFi.config(local_IP, gateway, subnet)) {');
-  buffer.writeln('    Serial.println("Static IP Failed!");');
-  buffer.writeln('  }');
-  buffer.writeln('  ');
-  buffer.writeln('  WiFi.mode(WIFI_STA);');
-  buffer.writeln('  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);');
-  buffer.writeln('  Serial.print("Connecting");');
-  buffer.writeln('  int attempts = 0;');
-  buffer.writeln('  while (WiFi.status() != WL_CONNECTED && attempts < 30) {');
-  buffer.writeln('    delay(500);');
-  buffer.writeln('    Serial.print(".");');
-  buffer.writeln('    attempts++;');
-  buffer.writeln('  }');
-  buffer.writeln('  ');
-  buffer.writeln('  if (WiFi.status() == WL_CONNECTED) {');
-  buffer.writeln('    Serial.println("\\nConnected!");');
-  buffer.writeln('    Serial.print("IP: ");');
-  buffer.writeln('    Serial.println(WiFi.localIP());');
-  buffer.writeln('  }');
-  buffer.writeln('  ');
-  buffer.writeln('  server.on("/", handleRoot);');
-  buffer.writeln('  server.on("/status", handleStatus);');
-  buffer.writeln('  server.on("/led/on", handleLedOn);');
-  buffer.writeln('  server.on("/led/off", handleLedOff);');
-  buffer.writeln('  server.begin();');
-  buffer.writeln('}');
-  buffer.writeln();
-  buffer.writeln('void loop() {');
-  buffer.writeln('  server.handleClient();');
-  buffer.writeln('  ');
-  buffer.writeln('  // Monitor physical switch');
-  buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
-  buffer.writeln('  if (actualState != ledState) {');
-  buffer.writeln('    ledState = actualState;');
-  buffer.writeln('    digitalWrite(CONTROL_PIN, ledState ? HIGH : LOW);');
-  if (!isParent && device?.parentId != null) {
-    buffer.writeln('    notifyParent(); // Inform parent of state change');
-  }
-  buffer.writeln('  }');
-  buffer.writeln('}');
-  buffer.writeln();
-  
-  // Add handlers
-  buffer.writeln('void handleRoot() {');
-  buffer.writeln('  String html = "<h1>${isParent ? 'PARENT' : 'CHILD'} Device</h1>";');
-  buffer.writeln('  html += "<p>IP: " + WiFi.localIP().toString() + "</p>";');
-  buffer.writeln('  html += "<p>Status: " + String(ledState ? "ON" : "OFF") + "</p>";');
-  buffer.writeln('  server.send(200, "text/html", html);');
-  buffer.writeln('}');
-  buffer.writeln();
-  buffer.writeln('void handleStatus() {');
-  buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
-  buffer.writeln('  ledState = actualState;');
-  buffer.writeln('  server.send(200, "text/plain", ledState ? "on" : "off");');
-  buffer.writeln('}');
-  buffer.writeln();
-  buffer.writeln('void handleLedOn() {');
-  buffer.writeln('  ledState = true;');
-  buffer.writeln('  digitalWrite(CONTROL_PIN, HIGH);');
-  buffer.writeln('  server.send(200, "text/plain", "ON");');
-  buffer.writeln('}');
-  buffer.writeln();
-  buffer.writeln('void handleLedOff() {');
-  buffer.writeln('  ledState = false;');
-  buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
-  buffer.writeln('  server.send(200, "text/plain", "OFF");');
-  buffer.writeln('}');
-  
-  if (!isParent && device?.parentId != null) {
+    final buffer = StringBuffer();
+    
+    final device = _devices.isNotEmpty ? _devices.first : null;
+    final isParent = device?.isParent ?? false;
+    
+    buffer.writeln('/*');
+    buffer.writeln(' * $_appName - ${isParent ? 'PARENT (ESP32)' : 'CHILD (ESP8266)'} Controller');
+    buffer.writeln(' * Generated: ${DateTime.now().toIso8601String()}');
+    buffer.writeln(' */');
     buffer.writeln();
-    buffer.writeln('void notifyParent() {');
-    buffer.writeln('  // TODO: Send HTTP request to parent');
-    buffer.writeln('  // WiFiClient client;');
-    buffer.writeln('  // client.connect(PARENT_IP, 80);');
+    
+    if (isParent) {
+      buffer.writeln('#include <WiFi.h>  // ESP32');
+      buffer.writeln('#include <WebServer.h>');
+      buffer.writeln('WebServer server(80);');
+    } else {
+      buffer.writeln('#include <ESP8266WiFi.h>  // ESP8266');
+      buffer.writeln('#include <ESP8266WebServer.h>');
+      buffer.writeln('ESP8266WebServer server(80);');
+    }
+    
+    buffer.writeln();
+    buffer.writeln('// ========== NETWORK CONFIGURATION ==========');
+    
+    if (_wifiNetworks.isNotEmpty) {
+      buffer.writeln('const char* WIFI_SSID = "${_wifiNetworks.first.ssid}";');
+      buffer.writeln('const char* WIFI_PASSWORD = "${_encryptionEnabled ? '********' : _wifiNetworks.first.password}";');
+    }
+    
+    buffer.writeln();
+    buffer.writeln('// Static IP Configuration');
+    final staticIP = device?.staticIP ?? (isParent ? '192.168.1.100' : '192.168.1.101');
+    buffer.writeln('IPAddress local_IP($staticIP);');
+    buffer.writeln('IPAddress gateway(192, 168, 1, 1);');
+    buffer.writeln('IPAddress subnet(255, 255, 255, 0);');
+    
+    if (!isParent && device?.parentId != null) {
+      final parent = _devices.firstWhere((d) => d.id == device.parentId, orElse: () => device);
+      buffer.writeln('const char* PARENT_IP = "${parent.ipAddress}";');
+    }
+    
+    final gpioPin = device?.gpioPin ?? 2;
+    final statusPin = device?.statusGpioPin ?? 4;
+    
+    buffer.writeln();
+    buffer.writeln('const int CONTROL_PIN = $gpioPin;');
+    buffer.writeln('const int STATUS_PIN = $statusPin;');
+    buffer.writeln('bool ledState = false;');
+    buffer.writeln();
+    
+    buffer.writeln('void setup() {');
+    buffer.writeln('  Serial.begin(115200);');
+    buffer.writeln('  pinMode(CONTROL_PIN, OUTPUT);');
+    buffer.writeln('  pinMode(STATUS_PIN, INPUT_PULLUP);');
+    buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
+    buffer.writeln('  ');
+    buffer.writeln('  if (!WiFi.config(local_IP, gateway, subnet)) {');
+    buffer.writeln('    Serial.println("Static IP Failed!");');
+    buffer.writeln('  }');
+    buffer.writeln('  ');
+    buffer.writeln('  WiFi.mode(WIFI_STA);');
+    buffer.writeln('  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);');
+    buffer.writeln('  Serial.print("Connecting");');
+    buffer.writeln('  int attempts = 0;');
+    buffer.writeln('  while (WiFi.status() != WL_CONNECTED && attempts < 30) {');
+    buffer.writeln('    delay(500);');
+    buffer.writeln('    Serial.print(".");');
+    buffer.writeln('    attempts++;');
+    buffer.writeln('  }');
+    buffer.writeln('  ');
+    buffer.writeln('  if (WiFi.status() == WL_CONNECTED) {');
+    buffer.writeln('    Serial.println("\\nConnected!");');
+    buffer.writeln('    Serial.print("IP: ");');
+    buffer.writeln('    Serial.println(WiFi.localIP());');
+    buffer.writeln('  }');
+    buffer.writeln('  ');
+    buffer.writeln('  server.on("/", handleRoot);');
+    buffer.writeln('  server.on("/status", handleStatus);');
+    buffer.writeln('  server.on("/led/on", handleLedOn);');
+    buffer.writeln('  server.on("/led/off", handleLedOff);');
+    buffer.writeln('  server.begin();');
     buffer.writeln('}');
+    buffer.writeln();
+    buffer.writeln('void loop() {');
+    buffer.writeln('  server.handleClient();');
+    buffer.writeln('  ');
+    buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
+    buffer.writeln('  if (actualState != ledState) {');
+    buffer.writeln('    ledState = actualState;');
+    buffer.writeln('    digitalWrite(CONTROL_PIN, ledState ? HIGH : LOW);');
+    if (!isParent && device?.parentId != null) {
+      buffer.writeln('    notifyParent();');
+    }
+    buffer.writeln('  }');
+    buffer.writeln('}');
+    buffer.writeln();
+    
+    buffer.writeln('void handleRoot() {');
+    buffer.writeln('  String html = "<h1>${isParent ? 'PARENT' : 'CHILD'} Device</h1>";');
+    buffer.writeln('  html += "<p>IP: " + WiFi.localIP().toString() + "</p>";');
+    buffer.writeln('  html += "<p>Status: " + String(ledState ? "ON" : "OFF") + "</p>";');
+    buffer.writeln('  server.send(200, "text/html", html);');
+    buffer.writeln('}');
+    buffer.writeln();
+    buffer.writeln('void handleStatus() {');
+    buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
+    buffer.writeln('  ledState = actualState;');
+    buffer.writeln('  server.send(200, "text/plain", ledState ? "on" : "off");');
+    buffer.writeln('}');
+    buffer.writeln();
+    buffer.writeln('void handleLedOn() {');
+    buffer.writeln('  ledState = true;');
+    buffer.writeln('  digitalWrite(CONTROL_PIN, HIGH);');
+    buffer.writeln('  server.send(200, "text/plain", "ON");');
+    buffer.writeln('}');
+    buffer.writeln();
+    buffer.writeln('void handleLedOff() {');
+    buffer.writeln('  ledState = false;');
+    buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
+    buffer.writeln('  server.send(200, "text/plain", "OFF");');
+    buffer.writeln('}');
+    
+    if (!isParent && device?.parentId != null) {
+      buffer.writeln();
+      buffer.writeln('void notifyParent() {');
+      buffer.writeln('  // TODO: Send HTTP request to parent');
+      buffer.writeln('}');
+    }
+    
+    return buffer.toString();
   }
-  
-  return buffer.toString();
-}
 
   // Storage
   Future<void> _loadFromStorage() async {
@@ -862,32 +833,36 @@ void _stopAutoSync() {
       final devicesJson = prefs.getString('devices');
       if (devicesJson != null) {
         final List<dynamic> devicesList = jsonDecode(devicesJson);
-        _devices = devicesList.map((d) => Device.fromJson(d)).toList();
+        _devices.clear();
+        _devices.addAll(devicesList.map((d) => Device.fromJson(d)).toList());
       }
 
       final roomsJson = prefs.getString('rooms');
       if (roomsJson != null) {
         final List<dynamic> roomsList = jsonDecode(roomsJson);
-        _rooms = roomsList.map((r) => Room.fromJson(r)).toList();
+        _rooms.clear();
+        _rooms.addAll(roomsList.map((r) => Room.fromJson(r)).toList());
       }
 
       final logsJson = prefs.getString('logs');
       if (logsJson != null) {
         final List<dynamic> logsList = jsonDecode(logsJson);
-        _logs = logsList.map((l) => LogEntry.fromJson(l)).toList();
+        _logs.clear();
+        _logs.addAll(logsList.map((l) => LogEntry.fromJson(l)).toList());
       }
 
       final wifiJson = prefs.getString('wifiNetworks');
       if (wifiJson != null) {
         final List<dynamic> wifiList = jsonDecode(wifiJson);
-        _wifiNetworks = wifiList.map((w) => WifiNetwork.fromJson(w)).toList();
+        _wifiNetworks.clear();
+        _wifiNetworks.addAll(wifiList.map((w) => WifiNetwork.fromJson(w)).toList());
       }
 
       if (_devices.isEmpty) {
         _addDemoData();
       }
     } catch (e) {
-      // Handle error silently
+      if (kDebugMode) print('Error loading from storage: $e');
     }
   }
 
@@ -921,19 +896,21 @@ void _stopAutoSync() {
         jsonEncode(_wifiNetworks.map((w) => w.toJson()).toList()),
       );
     } catch (e) {
-      // Handle error silently
+      if (kDebugMode) print('Error saving to storage: $e');
     }
   }
 
   void _addDemoData() {
-    _rooms = [
+    _rooms.clear();
+    _rooms.addAll([
       Room(id: _uuid.v4(), name: 'Living Room', type: RoomType.livingRoom),
       Room(id: _uuid.v4(), name: 'Kitchen', type: RoomType.kitchen),
       Room(id: _uuid.v4(), name: 'Bedroom', type: RoomType.bedroom),
       Room(id: _uuid.v4(), name: 'Garage', type: RoomType.garage),
-    ];
+    ]);
 
-    _devices = [
+    _devices.clear();
+    _devices.addAll([
       Device(
         id: _uuid.v4(),
         name: 'Main Light',
@@ -1001,9 +978,8 @@ void _stopAutoSync() {
         isOn: false,
         brightness: 50,
       ),
-    ];
+    ]);
 
-    // Add initial logs
     _addLog(
       deviceId: 'system',
       deviceName: 'System',
@@ -1015,9 +991,9 @@ void _stopAutoSync() {
   String generateUuid() => _uuid.v4();
 
   @override
-void dispose() {
-  _simulationTimer?.cancel();
-  _autoSyncTimer?.cancel(); // ADD THIS LINE
-  super.dispose();
-}
+  void dispose() {
+    _simulationTimer?.cancel();
+    _autoSyncTimer?.cancel();
+    super.dispose();
+  }
 }
