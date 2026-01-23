@@ -137,7 +137,7 @@ void dispose() {
                                 ),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? type.color.withOpacity(0.2)
+                                      ? type.color.withValues(alpha: 0.2)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
@@ -151,7 +151,7 @@ void dispose() {
                                   boxShadow: isSelected && isDark
                                       ? [
                                           BoxShadow(
-                                            color: type.color.withOpacity(0.3),
+                                            color: type.color.withValues(alpha: 0.3),
                                             blurRadius: 8,
                                           ),
                                         ]
