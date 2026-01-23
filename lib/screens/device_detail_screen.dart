@@ -99,7 +99,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: device.type.color.withOpacity(0.2),
+                          color: device.type.color.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -134,7 +134,7 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                           shadows: isDark && device.isOn
                               ? [
                                   Shadow(
-                                    color: device.type.color.withOpacity(0.5),
+                                    color: device.type.color.withValues(alpha: 0.5),
                                     blurRadius: 10,
                                   ),
                                 ]
@@ -540,7 +540,7 @@ if (!isRemoteMode)
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.neonRed.withOpacity(0.2),
+              backgroundColor: AppTheme.neonRed.withValues(alpha: 0.2),
               foregroundColor: AppTheme.neonRed,
             ),
             child: const Text('Delete'),
