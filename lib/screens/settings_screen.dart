@@ -83,8 +83,8 @@ class SettingsScreen extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: provider.appMode == AppMode.remote
-                            ? AppTheme.neonGreen.withOpacity(0.2)
-                            : AppTheme.neonAmber.withOpacity(0.2),
+                            ? AppTheme.neonGreen.withValues(alpha: 0.2)
+                            : AppTheme.neonAmber.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
@@ -144,7 +144,7 @@ class SettingsScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppTheme.neonAmber.withOpacity(0.1),
+                      color: AppTheme.neonAmber.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -656,7 +656,7 @@ class SettingsScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: isDark
-                          ? AppTheme.neonCyan.withOpacity(0.3)
+                          ? AppTheme.neonCyan.withValues(alpha: 0.3)
                           : Colors.grey.shade300,
                     ),
                   ),
@@ -733,8 +733,8 @@ class _SettingsTile extends StatelessWidget {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: isDark
-                    ? AppTheme.neonCyan.withOpacity(0.1)
-                    : Theme.of(context).primaryColor.withOpacity(0.1),
+                    ? AppTheme.neonCyan.withValues(alpha: 0.1)
+                    : Theme.of(context).primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
@@ -814,7 +814,7 @@ class _ThresholdSlider extends StatelessWidget {
                 vertical: 4,
               ),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
+                color: color.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -830,9 +830,9 @@ class _ThresholdSlider extends StatelessWidget {
         SliderTheme(
           data: SliderTheme.of(context).copyWith(
             activeTrackColor: color,
-            inactiveTrackColor: color.withOpacity(0.2),
+            inactiveTrackColor: color.withValues(alpha: 0.2),
             thumbColor: color,
-            overlayColor: color.withOpacity(0.2),
+            overlayColor: color.withValues(alpha: 0.2),
           ),
           child: Slider(
             value: value.toDouble(),
@@ -930,7 +930,7 @@ class _ThemeToggle extends StatelessWidget {
           color: isDark ? AppTheme.circuitLine : Colors.grey.shade200,
           border: Border.all(
             color: isDark
-                ? AppTheme.neonCyan.withOpacity(0.5)
+                ? AppTheme.neonCyan.withValues(alpha: 0.5)
                 : Colors.grey.shade300,
           ),
         ),
@@ -946,7 +946,7 @@ class _ThemeToggle extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   color:
-                      (isDark ? AppTheme.neonCyan : Colors.amber).withOpacity(0.5),
+                      (isDark ? AppTheme.neonCyan : Colors.amber).withValues(alpha: 0.5),
                   blurRadius: 8,
                 ),
               ],
