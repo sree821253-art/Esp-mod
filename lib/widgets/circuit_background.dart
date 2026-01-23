@@ -90,18 +90,18 @@ class CircuitPainter extends CustomPainter {
 
     // Circuit lines paint
     final linePaint = Paint()
-      ..color = AppTheme.circuitLine.withOpacity(0.3)
+      ..color = AppTheme.circuitLine.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
     final glowPaint = Paint()
-      ..color = AppTheme.neonCyan.withOpacity(0.2)
+      ..color = AppTheme.neonCyan.withValues(alpha: 0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 4);
 
     final nodePaint = Paint()
-      ..color = AppTheme.neonCyan.withOpacity(0.3)
+      ..color = AppTheme.neonCyan.withValues(alpha: 0.3)
       ..style = PaintingStyle.fill;
 
     final random = math.Random(42); // Fixed seed for consistent pattern
@@ -132,7 +132,7 @@ class CircuitPainter extends CustomPainter {
             final glowOpacity =
                 (math.sin(glowProgress * math.pi * 2) * 0.5 + 0.5);
             glowPaint.color =
-                AppTheme.neonCyan.withOpacity(0.3 * glowOpacity);
+                AppTheme.neonCyan.withValues(alpha: 0.3 * glowOpacity);
             canvas.drawPath(path, glowPaint);
           }
         }
@@ -157,7 +157,7 @@ class CircuitPainter extends CustomPainter {
             final pulseOpacity =
                 (math.sin(pulseProgress * math.pi * 2) * 0.5 + 0.5);
             final pulseGlow = Paint()
-              ..color = AppTheme.neonCyan.withOpacity(0.5 * pulseOpacity)
+              ..color = AppTheme.neonCyan.withValues(alpha: 0.5 * pulseOpacity)
               ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
             canvas.drawCircle(Offset(x, y), nodeSize + 4, pulseGlow);
           }
@@ -166,7 +166,7 @@ class CircuitPainter extends CustomPainter {
         // IC chip shapes
         if (random.nextDouble() > 0.95) {
           final chipPaint = Paint()
-            ..color = AppTheme.circuitLine.withOpacity(0.5)
+            ..color = AppTheme.circuitLine.withValues(alpha: 0.5)
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1;
 
@@ -214,12 +214,12 @@ class CircuitPainter extends CustomPainter {
     double yDir,
   ) {
     final paint = Paint()
-      ..color = AppTheme.neonCyan.withOpacity(0.15)
+      ..color = AppTheme.neonCyan.withValues(alpha: 0.15)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
 
     final glowPaint = Paint()
-      ..color = AppTheme.neonCyan.withOpacity(0.1)
+      ..color = AppTheme.neonCyan.withValues(alpha: 0.1)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3
       ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 6);
@@ -272,24 +272,24 @@ class GlassCard extends StatelessWidget {
       margin: margin,
       decoration: BoxDecoration(
         color: isDark
-            ? AppTheme.circuitDarkAlt.withOpacity(0.7)
-            : Colors.white.withOpacity(0.7),
+            ? AppTheme.circuitDarkAlt.withValues(alpha: 0.7)
+            : Colors.white.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? AppTheme.neonCyan.withOpacity(glowEffect ? 0.5 : 0.2)
-              : Colors.white.withOpacity(0.5),
+              ? AppTheme.neonCyan.withValues(alpha: glowEffect ? 0.5 : 0.2)
+              : Colors.white.withValues(alpha: 0.5),
           width: 1,
         ),
         boxShadow: [
           if (glowEffect && isDark)
             BoxShadow(
-              color: AppTheme.neonCyan.withOpacity(0.15),
+              color: AppTheme.neonCyan.withValues(alpha: 0.15),
               blurRadius: 12,
               spreadRadius: 2,
             ),
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -345,7 +345,7 @@ class NeonText extends StatelessWidget {
           text,
           style: (style ?? const TextStyle()).copyWith(
             foreground: Paint()
-              ..color = color.withOpacity(0.5)
+              ..color = color.withValues(alpha: 0.5)
               ..maskFilter = MaskFilter.blur(BlurStyle.outer, glowRadius),
           ),
         ),
@@ -388,7 +388,7 @@ class NeonIcon extends StatelessWidget {
         Icon(
           icon,
           size: size,
-          color: iconColor.withOpacity(0.5),
+          color: iconColor.withValues(alpha: 0.5),
         ),
         Icon(
           icon,
@@ -396,7 +396,7 @@ class NeonIcon extends StatelessWidget {
           color: iconColor,
           shadows: [
             Shadow(
-              color: iconColor.withOpacity(0.8),
+              color: iconColor.withValues(alpha: 0.8),
               blurRadius: 15,
             ),
           ],
@@ -428,23 +428,23 @@ class NeonDivider extends StatelessWidget {
           colors: isDark
               ? [
                   Colors.transparent,
-                  AppTheme.neonCyan.withOpacity(0.5),
+                  AppTheme.neonCyan.withValues(alpha: 0.5),
                   AppTheme.neonCyan,
-                  AppTheme.neonCyan.withOpacity(0.5),
+                  AppTheme.neonCyan.withValues(alpha: 0.5),
                   Colors.transparent,
                 ]
               : [
                   Colors.transparent,
-                  Colors.grey.withOpacity(0.3),
-                  Colors.grey.withOpacity(0.5),
-                  Colors.grey.withOpacity(0.3),
+                  Colors.grey.withValues(alpha: 0.3),
+                  Colors.grey.withValues(alpha: 0.5),
+                  Colors.grey.withValues(alpha: 0.3),
                   Colors.transparent,
                 ],
         ),
         boxShadow: isDark
             ? [
                 BoxShadow(
-                  color: AppTheme.neonCyan.withOpacity(0.3),
+                  color: AppTheme.neonCyan.withValues(alpha: 0.3),
                   blurRadius: 6,
                 ),
               ]
