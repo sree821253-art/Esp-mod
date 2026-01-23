@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/device.dart';
@@ -639,8 +638,8 @@ class AppProvider extends ChangeNotifier {
     );
 
     if (_logs.length > 1000) {
-      _logs = _logs.sublist(0, 1000);
-    }
+  _logs.removeRange(1000, _logs.length);
+}
   }
 
   void clearLogs() {
@@ -721,9 +720,12 @@ class AppProvider extends ChangeNotifier {
     buffer.writeln('IPAddress subnet(255, 255, 255, 0);');
     
     if (!isParent && device?.parentId != null) {
-      final parent = _devices.firstWhere((d) => d.id == device.parentId, orElse: () => device);
-      buffer.writeln('const char* PARENT_IP = "${parent.ipAddress}";');
-    }
+  final parent = _devices.firstWhere(
+    (d) => d.id == device!.parentId,
+    orElse: () => _devices.first,
+  );
+  buffer.writeln('const char* PARENT_IP = "${parent.ipAddress}";');
+}
     
     final gpioPin = device?.gpioPin ?? 2;
     final statusPin = device?.statusGpioPin ?? 4;
