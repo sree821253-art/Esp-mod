@@ -74,6 +74,7 @@ class Device {
   String? parentId;
   String? staticIP;
   bool isOn;
+  bool physicalSwitchOn;
   bool isOnline;
   int? batteryLevel;
   bool hasBattery;
@@ -98,6 +99,7 @@ class Device {
     this.parentId,
     this.staticIP,
     this.isOn = false,
+    this.physicalSwitchOn = false,
     this.isOnline = false,
     this.batteryLevel,
     this.hasBattery = false,
@@ -124,6 +126,7 @@ class Device {
     String? parentId,
     String? staticIP,
     bool? isOn,
+    bool? physicalSwitchOn,
     bool? isOnline,
     int? batteryLevel,
     bool? hasBattery,
@@ -148,6 +151,7 @@ class Device {
       parentId: parentId ?? this.parentId,
       staticIP: staticIP ?? this.staticIP,
       isOn: isOn ?? this.isOn,
+      physicalSwitchOn: physicalSwitchOn ?? this.physicalSwitchOn,
       isOnline: isOnline ?? this.isOnline,
       batteryLevel: batteryLevel ?? this.batteryLevel,
       hasBattery: hasBattery ?? this.hasBattery,
@@ -174,6 +178,7 @@ class Device {
         'parentId': parentId,
         'staticIP': staticIP,
         'isOn': isOn,
+        'physicalSwitchOn': physicalSwitchOn,
         'isOnline': isOnline,
         'batteryLevel': batteryLevel,
         'hasBattery': hasBattery,
@@ -199,6 +204,7 @@ class Device {
         parentId: json['parentId'],
         staticIP: json['staticIP'],
         isOn: json['isOn'] ?? false,
+        physicalSwitchOn: json['physicalSwitchOn'] ?? false,
         isOnline: json['isOnline'] ?? false,
         batteryLevel: json['batteryLevel'],
         hasBattery: json['hasBattery'] ?? false,
