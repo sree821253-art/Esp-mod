@@ -400,94 +400,106 @@ if (!isRemoteMode)
   }
 
   void _showEditDialog(BuildContext context, Device device) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final nameController = TextEditingController(text: device.name);
-    final ipController = TextEditingController(text: device.ipAddress);
-    final gpioController =
-        TextEditingController(text: device.gpioPin?.toString() ?? '');
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  final nameController = TextEditingController(text: device.name);
+  final ipController = TextEditingController(text: device.ipAddress);
+  final gpioController = TextEditingController(text: device.gpioPin?.toString() ?? '');
+  final statusGpioController = TextEditingController(text: device.statusGpioPin?.toString() ?? '');  // ADD THIS
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: isDark ? AppTheme.circuitDarkAlt : Colors.white,
-        title: Row(
-          children: [
-            Icon(
-              Icons.edit,
-              color: isDark ? AppTheme.neonCyan : Theme.of(context).primaryColor,
-            ),
-            const SizedBox(width: 8),
-            const Text('Edit Device'),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Device Name',
-                  prefixIcon: Icon(Icons.label_outline),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: ipController,
-                decoration: const InputDecoration(
-                  labelText: 'IP Address',
-                  prefixIcon: Icon(Icons.wifi),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: gpioController,
-                decoration: const InputDecoration(
-                  labelText: 'GPIO Pin (optional)',
-                  prefixIcon: Icon(Icons.memory),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-            ],
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: isDark ? AppTheme.circuitDarkAlt : Colors.white,
+      title: Row(
+        children: [
+          Icon(
+            Icons.edit,
+            color: isDark ? AppTheme.neonCyan : Theme.of(context).primaryColor,
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.trim().isEmpty ||
-                  ipController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill required fields')),
-                );
-                return;
-              }
-
-              final provider = context.read<AppProvider>();
-              provider.updateDevice(device.copyWith(
-                name: nameController.text.trim(),
-                ipAddress: ipController.text.trim(),
-                gpioPin: int.tryParse(gpioController.text),
-              ));
-
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Device updated'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            child: const Text('Save'),
-          ),
+          const SizedBox(width: 8),
+          const Text('Edit Device'),
         ],
       ),
-    );
-  }
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Device Name',
+                prefixIcon: Icon(Icons.label_outline),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: ipController,
+              decoration: const InputDecoration(
+                labelText: 'IP Address',
+                prefixIcon: Icon(Icons.wifi),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: gpioController,
+              decoration: const InputDecoration(
+                labelText: 'GPIO Pin',  // CHANGED: Removed (optional)
+                prefixIcon: Icon(Icons.memory),
+                hintText: 'e.g., 2',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: statusGpioController,  // ADD THIS FIELD
+              decoration: const InputDecoration(
+                labelText: 'Status GPIO Pin',
+                prefixIcon: Icon(Icons.sensors),
+                hintText: 'e.g., 4 - reads switch state',
+              ),
+              keyboardType: TextInputType.number,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (nameController.text.trim().isEmpty ||
+                ipController.text.trim().isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Please fill required fields')),
+              );
+              return;
+            }
+
+            final provider = context.read<AppProvider>();
+            provider.updateDevice(device.copyWith(
+              name: nameController.text.trim(),
+              ipAddress: ipController.text.trim(),
+              gpioPin: int.tryParse(gpioController.text),
+              statusGpioPin: int.tryParse(statusGpioController.text),  // ADD THIS
+            ));
+
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Device updated'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+}
 
   void _showDeleteDialog(BuildContext context, Device device) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
