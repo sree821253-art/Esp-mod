@@ -225,8 +225,8 @@ class _LogsScreenState extends State<LogsScreen> {
                                   height: 1,
                                   width: 20,
                                   color: isDark
-                                      ? AppTheme.neonCyan.withOpacity(0.3)
-                                      : Colors.grey.withOpacity(0.3),
+                                      ? AppTheme.neonCyan.withValues(alpha: 0.3)
+                                      : Colors.grey.withValues(alpha: 0.3),
                                 ),
                                 const SizedBox(width: 12),
                                 Text(
@@ -242,8 +242,8 @@ class _LogsScreenState extends State<LogsScreen> {
                                   child: Container(
                                     height: 1,
                                     color: isDark
-                                        ? AppTheme.neonCyan.withOpacity(0.3)
-                                        : Colors.grey.withOpacity(0.3),
+                                        ? AppTheme.neonCyan.withValues(alpha: 0.3)
+                                        : Colors.grey.withValues(alpha: 0.3),
                                   ),
                                 ),
                               ],
@@ -558,13 +558,13 @@ class _FilterChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: isDark
-            ? AppTheme.neonCyan.withOpacity(0.2)
-            : Theme.of(context).primaryColor.withOpacity(0.1),
+            ? AppTheme.neonCyan.withValues(alpha: 0.2)
+            : Theme.of(context).primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark
-              ? AppTheme.neonCyan.withOpacity(0.5)
-              : Theme.of(context).primaryColor.withOpacity(0.3),
+              ? AppTheme.neonCyan.withValues(alpha: 0.5)
+              : Theme.of(context).primaryColor.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -612,7 +612,7 @@ class _LogEntryCard extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: log.type.color.withOpacity(0.2),
+                color: log.type.color.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
@@ -700,11 +700,11 @@ class _DateButton extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isDark
-              ? AppTheme.circuitLine.withOpacity(0.5)
+              ? AppTheme.circuitLine.withValues(alpha: 0.5)
               : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isDark ? AppTheme.neonCyan.withOpacity(0.3) : Colors.grey.shade300,
+            color: isDark ? AppTheme.neonCyan.withValues(alpha: 0.3) : Colors.grey.shade300,
           ),
         ),
         child: Row(
@@ -764,7 +764,7 @@ class _TypeChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.2) : Colors.transparent,
+          color: isSelected ? color.withValues(alpha: 0.2) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected ? color : (isDark ? Colors.white24 : Colors.black12),
