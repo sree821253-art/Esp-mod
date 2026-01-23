@@ -231,7 +231,7 @@ GestureDetector(  // ADD THIS ENTIRE SECTION
           : Colors.grey.shade200,
       border: Border.all(
         color: isDark
-            ? AppTheme.neonCyan.withOpacity(0.5)
+            ? AppTheme.neonCyan.withValues(alpha: 0.5)
             : Colors.grey.shade300,
       ),
     ),
@@ -272,8 +272,8 @@ if (provider.isSyncing)
               strokeWidth: 2,
               valueColor: AlwaysStoppedAnimation(
                 isDark
-                    ? AppTheme.neonCyan.withOpacity(0.5)
-                    : Theme.of(context).primaryColor.withOpacity(0.5),
+                    ? AppTheme.neonCyan.withValues(alpha: 0.5)
+                    : Theme.of(context).primaryColor.withValues(alpha: 0.5),
               ),
             ),
           ),
@@ -561,7 +561,7 @@ SliverToBoxAdapter(
                       icon: const Icon(Icons.lightbulb),
                       label: const Text('Turn All ON'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.neonGreen.withOpacity(0.2),
+                        backgroundColor: AppTheme.neonGreen.withValues(alpha: 0.2),
                         foregroundColor: AppTheme.neonGreen,
                         padding: const EdgeInsets.all(16),
                         side: const BorderSide(color: AppTheme.neonGreen),
@@ -578,7 +578,7 @@ SliverToBoxAdapter(
                       icon: const Icon(Icons.lightbulb_outline),
                       label: const Text('Turn All OFF'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.neonRed.withOpacity(0.2),
+                        backgroundColor: AppTheme.neonRed.withValues(alpha: 0.2),
                         foregroundColor: AppTheme.neonRed,
                         padding: const EdgeInsets.all(16),
                         side: const BorderSide(color: AppTheme.neonRed),
@@ -619,7 +619,7 @@ class _ThemeToggle extends StatelessWidget {
               : Colors.grey.shade200,
           border: Border.all(
             color: isDark
-                ? AppTheme.neonCyan.withOpacity(0.5)
+                ? AppTheme.neonCyan.withValues(alpha: 0.5)
                 : Colors.grey.shade300,
           ),
         ),
@@ -635,7 +635,7 @@ class _ThemeToggle extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   color: (isDark ? AppTheme.neonCyan : Colors.amber)
-                      .withOpacity(0.5),
+                      .withValues(alpha: 0.5),
                   blurRadius: 8,
                 ),
               ],
@@ -688,7 +688,7 @@ class _StatCard extends StatelessWidget {
               shadows: isDark
                   ? [
                       Shadow(
-                        color: color.withOpacity(0.5),
+                        color: color.withValues(alpha: 0.5),
                         blurRadius: 5,
                       ),
                     ]
@@ -792,7 +792,7 @@ class _RoomCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: room.type.color.withOpacity(0.2),
+                  color: room.type.color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -812,7 +812,7 @@ class _RoomCard extends StatelessWidget {
                     boxShadow: isDark
                         ? [
                             BoxShadow(
-                              color: AppTheme.neonGreen.withOpacity(0.5),
+                              color: AppTheme.neonGreen.withValues(alpha: 0.5),
                               blurRadius: 6,
                             ),
                           ]
@@ -851,8 +851,8 @@ class _RoomCard extends StatelessWidget {
                     height: 24,
                     decoration: BoxDecoration(
                       color: device.isOn
-                          ? device.type.color.withOpacity(0.2)
-                          : Colors.grey.withOpacity(0.1),
+                          ? device.type.color.withValues(alpha: 0.2)
+                          : Colors.grey.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Icon(
@@ -887,7 +887,7 @@ class _UnassignedDeviceItem extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: device.type.color.withOpacity(0.2),
+              color: device.type.color.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
