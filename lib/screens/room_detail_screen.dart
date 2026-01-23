@@ -76,7 +76,7 @@ class RoomDetailScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: currentRoom.type.color.withOpacity(0.2),
+                          color: currentRoom.type.color.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Icon(
@@ -265,8 +265,8 @@ class _DeviceCard extends StatelessWidget {
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: device.isOn
-                        ? device.type.color.withOpacity(0.2)
-                        : Colors.grey.withOpacity(0.1),
+                        ? device.type.color.withValues(alpha: 0.2)
+                        : Colors.grey.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -310,7 +310,7 @@ class _DeviceCard extends StatelessWidget {
                                         color: (device.isOnline
                                                 ? AppTheme.neonGreen
                                                 : AppTheme.neonRed)
-                                            .withOpacity(0.5),
+                                            .withValues(alpha: 0.5),
                                         blurRadius: 6,
                                       ),
                                     ]
@@ -358,7 +358,7 @@ class _DeviceCard extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: AppTheme.neonAmber.withOpacity(0.2),
+                                color: AppTheme.neonAmber.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: const Text(
@@ -388,13 +388,13 @@ class _DeviceCard extends StatelessWidget {
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: device.isOn
-                            ? device.type.color.withOpacity(0.2)
-                            : Colors.grey.withOpacity(0.1),
+                            ? device.type.color.withValues(alpha: 0.2)
+                            : Colors.grey.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: device.isOn
                               ? device.type.color
-                              : Colors.grey.withOpacity(0.3),
+                              : Colors.grey.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Icon(
@@ -542,7 +542,7 @@ class _WaterLevelMini extends StatelessWidget {
               child: CircularProgressIndicator(
                 value: level / 100,
                 strokeWidth: 6,
-                backgroundColor: _levelColor.withOpacity(0.2),
+                backgroundColor: _levelColor.withValues(alpha: 0.2),
                 valueColor: AlwaysStoppedAnimation(_levelColor),
               ),
             ),
@@ -590,9 +590,9 @@ class _GasValueMini extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
