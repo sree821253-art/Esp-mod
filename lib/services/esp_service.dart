@@ -21,28 +21,36 @@ class EspService {
 
   // Get device status
   Future<Map<String, dynamic>?> getDeviceStatus(String ipAddress) async {
-    try {
-      final response = await http
-          .get(Uri.parse('http://$ipAddress/status'))
-          .timeout(_timeout);
+  try {
+    final response = await http
+        .get(Uri.parse('http://$ipAddress/status'))
+        .timeout(_timeout);
+    
+    if (response.statusCode == 200) {
+      final body = response.body.toLowerCase().trim();
       
-      if (response.statusCode == 200) {
-        final body = response.body.toLowerCase().trim();
-        
-        // Parse response - expecting "on" or "off" or "1" or "0"
-        bool isOn = body.contains('on') || body == '1';
-        
-        return {
-          'online': true,
-          'isOn': isOn,
-          'timestamp': DateTime.now().toIso8601String(),
-        };
+      // Parse response format: "relay:on,switch:off" or just "on"/"off"
+      bool relayOn = body.contains('on') || body == '1';
+      bool switchOn = relayOn; // Default to same as relay
+      
+      // Check if response includes physical switch status
+      if (body.contains('relay:') && body.contains('switch:')) {
+        relayOn = body.contains('relay:on');
+        switchOn = body.contains('switch:on');
       }
-      return null;
-    } catch (e) {
-      return null;
+      
+      return {
+        'online': true,
+        'isOn': relayOn,
+        'physicalSwitchOn': switchOn,
+        'timestamp': DateTime.now().toIso8601String(),
+      };
     }
+    return null;
+  } catch (e) {
+    return null;
   }
+}
 
   // Turn device ON
   Future<bool> turnDeviceOn(String ipAddress) async {
