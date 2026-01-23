@@ -277,56 +277,75 @@ class AppProvider extends ChangeNotifier {
   }
 
   // Sync - REAL HTTP COMMUNICATION
-  Future<void> syncDevices() async {
-    _isSyncing = true;
+Future<void> syncDevices({bool silent = false}) async {
+  // Prevent multiple syncs at once
+  if (_isSyncing) return;
+  
+  _isSyncing = true;
+  
+  // Only show UI updates if not silent
+  if (!silent) {
     _syncProgress = 0;
     notifyListeners();
-
+    
     _addLog(
       deviceId: 'system',
       deviceName: 'System',
       type: LogType.sync,
       action: 'Device sync started',
     );
+  }
 
-    final totalDevices = _devices.length;
-    if (totalDevices == 0) {
+  final totalDevices = _devices.length;
+  if (totalDevices == 0) {
+    if (!silent) {
       await Future.delayed(const Duration(seconds: 2));
       _syncProgress = 1.0;
-      _isSyncing = false;
-      notifyListeners();
-      return;
+      _addLog(
+        deviceId: 'system',
+        deviceName: 'System',
+        type: LogType.sync,
+        action: 'Device sync completed',
+        details: 'No devices to sync',
+      );
+    }
+    _isSyncing = false;
+    notifyListeners();
+    return;
+  }
+
+  int onlineCount = 0;
+
+  for (int i = 0; i < _devices.length; i++) {
+    final device = _devices[i];
+
+    final status = await _espService.getDeviceStatus(device.ipAddress);
+
+    if (status != null) {
+      _devices[i] = device.copyWith(
+        isOnline: true,
+        isOn: status['isOn'] ?? false,
+        physicalSwitchOn: status['physicalSwitchOn'] ?? false,
+        lastSeen: DateTime.now(),
+      );
+      onlineCount++;
+    } else {
+      _devices[i] = device.copyWith(
+        isOnline: false,
+        lastSeen: DateTime.now(),
+      );
     }
 
-    int onlineCount = 0;
-
-    for (int i = 0; i < _devices.length; i++) {
-      final device = _devices[i];
-
-      final status = await _espService.getDeviceStatus(device.ipAddress);
-
-      if (status != null) {
-  _devices[i] = device.copyWith(
-    isOnline: true,
-    isOn: status['isOn'] ?? false,
-    physicalSwitchOn: status['physicalSwitchOn'] ?? false,  // ADD THIS LINE
-    lastSeen: DateTime.now(),
-  );
-  onlineCount++;
-}
-      } else {
-        _devices[i] = device.copyWith(
-          isOnline: false,
-          lastSeen: DateTime.now(),
-        );
-      }
-
+    // Only update progress UI if not silent
+    if (!silent) {
       _syncProgress = (i + 1) / totalDevices;
       notifyListeners();
-      
       await Future.delayed(const Duration(milliseconds: 200));
     }
+  }
 
+  // Only log if not silent
+  if (!silent) {
     _addLog(
       deviceId: 'system',
       deviceName: 'System',
@@ -334,11 +353,12 @@ class AppProvider extends ChangeNotifier {
       action: 'Device sync completed',
       details: '$onlineCount/${_devices.length} devices online',
     );
-
-    _isSyncing = false;
-    _saveToStorage();
-    notifyListeners();
   }
+
+  _isSyncing = false;
+  _saveToStorage();
+  notifyListeners();
+}
 
   // Master Switch - REAL HTTP COMMUNICATION
   Future<bool> masterSwitch(String key, bool turnOn) async {
