@@ -39,10 +39,10 @@ class LightBrightnessControl extends StatelessWidget {
                 vertical: 4,
               ),
               decoration: BoxDecoration(
-                color: activeColor.withOpacity(0.2),
+                color: activeColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: activeColor.withOpacity(0.5),
+                  color: activeColor.withValues(alpha: 0.5),
                 ),
               ),
               child: Text(
@@ -72,9 +72,9 @@ class LightBrightnessControl extends StatelessWidget {
               child: SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   activeTrackColor: activeColor,
-                  inactiveTrackColor: activeColor.withOpacity(0.2),
+                  inactiveTrackColor: activeColor.withValues(alpha: 0.2),
                   thumbColor: activeColor,
-                  overlayColor: activeColor.withOpacity(0.2),
+                  overlayColor: activeColor.withValues(alpha: 0.2),
                   trackHeight: 6,
                   thumbShape: const RoundSliderThumbShape(
                     enabledThumbRadius: 10,
@@ -143,10 +143,10 @@ class FanSpeedControl extends StatelessWidget {
                 vertical: 4,
               ),
               decoration: BoxDecoration(
-                color: activeColor.withOpacity(0.2),
+                color: activeColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: activeColor.withOpacity(0.5),
+                  color: activeColor.withValues(alpha: 0.5),
                 ),
               ),
               child: Text(
@@ -185,19 +185,19 @@ class FanSpeedControl extends StatelessWidget {
                       height: 40,
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? activeColor.withOpacity(0.3)
+                            ? activeColor.withValues(alpha: 0.3)
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: isSelected
                               ? activeColor
-                              : activeColor.withOpacity(0.3),
+                              : activeColor.withValues(alpha: 0.3),
                           width: isSelected ? 2 : 1,
                         ),
                         boxShadow: isSelected && isDark
                             ? [
                                 BoxShadow(
-                                  color: activeColor.withOpacity(0.4),
+                                  color: activeColor.withValues(alpha: 0.4),
                                   blurRadius: 8,
                                 ),
                               ]
@@ -209,7 +209,7 @@ class FanSpeedControl extends StatelessWidget {
                           style: TextStyle(
                             color: isSelected
                                 ? activeColor
-                                : activeColor.withOpacity(0.5),
+                                : activeColor.withValues(alpha: 0.5),
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
@@ -334,7 +334,7 @@ class _WaterLevelGaugeState extends State<WaterLevelGauge>
                       shadows: isDark
                           ? [
                               Shadow(
-                                color: waterColor.withOpacity(0.5),
+                                color: waterColor.withValues(alpha: 0.5),
                                 blurRadius: 10,
                               ),
                             ]
@@ -385,7 +385,7 @@ class _WaterLevelGaugeState extends State<WaterLevelGauge>
                   icon: const Icon(Icons.play_arrow),
                   label: const Text('Manual ON'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.neonGreen.withOpacity(0.2),
+                    backgroundColor: AppTheme.neonGreen.withValues(alpha: 0.2),
                     foregroundColor: AppTheme.neonGreen,
                     side: const BorderSide(color: AppTheme.neonGreen),
                   ),
@@ -398,7 +398,7 @@ class _WaterLevelGaugeState extends State<WaterLevelGauge>
                   icon: const Icon(Icons.stop),
                   label: const Text('Manual OFF'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.neonRed.withOpacity(0.2),
+                    backgroundColor: AppTheme.neonRed.withValues(alpha: 0.2),
                     foregroundColor: AppTheme.neonRed,
                     side: const BorderSide(color: AppTheme.neonRed),
                   ),
@@ -412,7 +412,7 @@ class _WaterLevelGaugeState extends State<WaterLevelGauge>
             margin: const EdgeInsets.only(top: 16),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.neonRed.withOpacity(0.2),
+              color: AppTheme.neonRed.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppTheme.neonRed),
             ),
@@ -429,7 +429,7 @@ class _WaterLevelGaugeState extends State<WaterLevelGauge>
                       shadows: isDark
                           ? [
                               Shadow(
-                                color: AppTheme.neonRed.withOpacity(0.5),
+                                color: AppTheme.neonRed.withValues(alpha: 0.5),
                                 blurRadius: 5,
                               ),
                             ]
@@ -470,8 +470,8 @@ class WaterGaugePainter extends CustomPainter {
     // Background circle
     final bgPaint = Paint()
       ..color = isDark
-          ? AppTheme.circuitLine.withOpacity(0.5)
-          : Colors.grey.withOpacity(0.2)
+          ? AppTheme.circuitLine.withValues(alpha: 0.5)
+          : Colors.grey.withValues(alpha: 0.2)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(center, radius, bgPaint);
 
@@ -500,7 +500,7 @@ class WaterGaugePainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          waterColor.withOpacity(0.6),
+          waterColor.withValues(alpha: 0.6),
           waterColor,
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
@@ -510,7 +510,7 @@ class WaterGaugePainter extends CustomPainter {
 
     // Border glow
     final borderPaint = Paint()
-      ..color = waterColor.withOpacity(isDark ? 0.5 : 0.3)
+      ..color = waterColor.withValues(alpha: isDark ? 0.5 : 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3;
 
@@ -576,10 +576,10 @@ class _ThresholdIndicator extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: isActive ? color.withOpacity(0.2) : Colors.transparent,
+        color: isActive ? color.withValues(alpha: 0.2) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: color.withOpacity(isActive ? 1 : 0.3),
+          color: color.withValues(alpha: isActive ? 1 : 0.3),
         ),
       ),
       child: Column(
@@ -654,7 +654,7 @@ class GasSensorDisplay extends StatelessWidget {
             margin: const EdgeInsets.only(top: 16),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.neonRed.withOpacity(0.2),
+              color: AppTheme.neonRed.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppTheme.neonRed),
             ),
@@ -671,7 +671,7 @@ class GasSensorDisplay extends StatelessWidget {
                       shadows: isDark
                           ? [
                               Shadow(
-                                color: AppTheme.neonRed.withOpacity(0.5),
+                                color: AppTheme.neonRed.withValues(alpha: 0.5),
                                 blurRadius: 5,
                               ),
                             ]
@@ -715,13 +715,13 @@ class _GasValueCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDark
-            ? AppTheme.circuitDarkAlt.withOpacity(0.5)
-            : Colors.grey.withOpacity(0.1),
+            ? AppTheme.circuitDarkAlt.withValues(alpha: 0.5)
+            : Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: value > threshold
-              ? AppTheme.neonRed.withOpacity(0.5)
-              : color.withOpacity(0.3),
+              ? AppTheme.neonRed.withValues(alpha: 0.5)
+              : color.withValues(alpha: 0.3),
         ),
       ),
       child: Column(
@@ -754,7 +754,7 @@ class _GasValueCard extends StatelessWidget {
               Container(
                 height: 8,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.2),
+                  color: color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
               ),
@@ -769,7 +769,7 @@ class _GasValueCard extends StatelessWidget {
                     boxShadow: isDark
                         ? [
                             BoxShadow(
-                              color: color.withOpacity(0.5),
+                              color: color.withValues(alpha: 0.5),
                               blurRadius: 6,
                             ),
                           ]
@@ -823,13 +823,13 @@ class _StepButton extends StatelessWidget {
         height: 36,
         decoration: BoxDecoration(
           color: onTap != null
-              ? color.withOpacity(0.2)
-              : Colors.grey.withOpacity(0.1),
+              ? color.withValues(alpha: 0.2)
+              : Colors.grey.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: onTap != null
-                ? color.withOpacity(0.5)
-                : Colors.grey.withOpacity(0.3),
+                ? color.withValues(alpha: 0.5)
+                : Colors.grey.withValues(alpha: 0.3),
           ),
         ),
         child: Icon(
@@ -864,7 +864,7 @@ class DevicePowerToggle extends StatelessWidget {
     final color = activeColor ?? AppTheme.neonCyan;
     final effectiveColor = isOnline
         ? (isOn ? color : Colors.grey)
-        : Colors.red.withOpacity(0.5);
+        : Colors.red.withValues(alpha: 0.5);
 
     return GestureDetector(
       onTap: isOnline && !isLoading ? onToggle : null,
@@ -874,15 +874,15 @@ class DevicePowerToggle extends StatelessWidget {
         height: 80,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: effectiveColor.withOpacity(isOn ? 0.2 : 0.1),
+          color: effectiveColor.withValues(alpha: isOn ? 0.2 : 0.1),
           border: Border.all(
-            color: effectiveColor.withOpacity(isOn ? 1 : 0.5),
+            color: effectiveColor.withValues(alpha: isOn ? 1 : 0.5),
             width: 2,
           ),
           boxShadow: isOn && themeBrightness == Brightness.dark
               ? [
                   BoxShadow(
-                    color: effectiveColor.withOpacity(0.4),
+                    color: effectiveColor.withValues(alpha: 0.4),
                     blurRadius: 20,
                     spreadRadius: 2,
                   ),
