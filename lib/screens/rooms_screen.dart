@@ -200,7 +200,7 @@ class RoomsScreen extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? type.color.withOpacity(0.2)
+                              ? type.color.withValues(alpha: 0.2)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
@@ -335,7 +335,7 @@ class RoomsScreen extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? type.color.withOpacity(0.2)
+                              ? type.color.withValues(alpha: 0.2)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
@@ -442,9 +442,9 @@ class RoomsScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.neonAmber.withOpacity(0.1),
+                  color: AppTheme.neonAmber.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppTheme.neonAmber.withOpacity(0.3)),
+                  border: Border.all(color: AppTheme.neonAmber.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -486,7 +486,7 @@ class RoomsScreen extends StatelessWidget {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.neonRed.withOpacity(0.2),
+              backgroundColor: AppTheme.neonRed.withValues(alpha: 0.2),
               foregroundColor: AppTheme.neonRed,
             ),
             child: const Text('Delete'),
@@ -536,7 +536,7 @@ class _RoomGridCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: room.type.color.withOpacity(0.2),
+                        color: room.type.color.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -644,7 +644,7 @@ class _RoomGridCard extends StatelessWidget {
                   boxShadow: isDark
                       ? [
                           BoxShadow(
-                            color: AppTheme.neonGreen.withOpacity(0.5),
+                            color: AppTheme.neonGreen.withValues(alpha: 0.5),
                             blurRadius: 8,
                           ),
                         ]
