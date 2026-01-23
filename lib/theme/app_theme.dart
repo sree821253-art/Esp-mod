@@ -88,16 +88,16 @@ class AppTheme {
       iconTheme: const IconThemeData(color: neonCyan),
     ),
     cardTheme: CardThemeData(
-      color: circuitDarkAlt.withOpacity(0.8),
+      color: circuitDarkAlt.withValues(alpha: 0.8),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: neonCyan.withOpacity(0.3), width: 1),
+        side: BorderSide(color: neonCyan.withValues(alpha: 0.3), width: 1),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: neonCyan.withOpacity(0.2),
+        backgroundColor: neonCyan.withValues(alpha: 0.2),
         foregroundColor: neonCyan,
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
@@ -109,14 +109,14 @@ class AppTheme {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: circuitDarkAlt.withOpacity(0.5),
+      fillColor: circuitDarkAlt.withValues(alpha: 0.5),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: neonCyan.withOpacity(0.3)),
+        borderSide: BorderSide(color: neonCyan.withValues(alpha: 0.3)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: neonCyan.withOpacity(0.3)),
+        borderSide: BorderSide(color: neonCyan.withValues(alpha: 0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
@@ -126,7 +126,7 @@ class AppTheme {
       hintStyle: GoogleFonts.rajdhani(color: Colors.white38),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: circuitDarkAlt.withOpacity(0.95),
+      backgroundColor: circuitDarkAlt.withValues(alpha: 0.95),
       selectedItemColor: neonCyan,
       unselectedItemColor: Colors.white38,
       type: BottomNavigationBarType.fixed,
@@ -141,16 +141,16 @@ class AppTheme {
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return neonCyan.withOpacity(0.3);
+          return neonCyan.withValues(alpha: 0.3);
         }
         return Colors.white12;
       }),
     ),
     sliderTheme: SliderThemeData(
       activeTrackColor: neonCyan,
-      inactiveTrackColor: neonCyan.withOpacity(0.2),
+      inactiveTrackColor: neonCyan.withValues(alpha: 0.2),
       thumbColor: neonCyan,
-      overlayColor: neonCyan.withOpacity(0.2),
+      overlayColor: neonCyan.withValues(alpha: 0.2),
       valueIndicatorColor: neonCyan,
       valueIndicatorTextStyle: GoogleFonts.orbitron(
         fontSize: 12,
@@ -161,7 +161,7 @@ class AppTheme {
       backgroundColor: circuitDarkAlt,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: neonCyan.withOpacity(0.5)),
+        side: BorderSide(color: neonCyan.withValues(alpha: 0.5)),
       ),
       titleTextStyle: GoogleFonts.orbitron(
         fontSize: 18,
@@ -174,7 +174,7 @@ class AppTheme {
       contentTextStyle: GoogleFonts.rajdhani(color: Colors.white),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: neonCyan.withOpacity(0.5)),
+        side: BorderSide(color: neonCyan.withValues(alpha: 0.5)),
       ),
       behavior: SnackBarBehavior.floating,
     ),
@@ -232,7 +232,7 @@ class AppTheme {
       ),
     ),
     appBarTheme: AppBarTheme(
-      backgroundColor: Colors.white.withOpacity(0.8),
+      backgroundColor: Colors.white.withValues(alpha: 0.8),
       elevation: 0,
       centerTitle: true,
       titleTextStyle: GoogleFonts.inter(
@@ -243,7 +243,7 @@ class AppTheme {
       iconTheme: const IconThemeData(color: Color(0xFF0D47A1)),
     ),
     cardTheme: CardThemeData(
-      color: Colors.white.withOpacity(0.8),
+      color: Colors.white.withValues(alpha: 0.8),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20),
@@ -262,7 +262,7 @@ class AppTheme {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: Colors.white.withOpacity(0.8),
+      fillColor: Colors.white.withValues(alpha: 0.8),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
@@ -277,7 +277,7 @@ class AppTheme {
       ),
     ),
     bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: Colors.white.withOpacity(0.9),
+      backgroundColor: Colors.white.withValues(alpha: 0.9),
       selectedItemColor: const Color(0xFF0D47A1),
       unselectedItemColor: Colors.grey,
       type: BottomNavigationBarType.fixed,
@@ -292,9 +292,9 @@ class AppTheme {
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
         if (states.contains(WidgetState.selected)) {
-          return const Color(0xFF0D47A1).withOpacity(0.3);
+          return const Color(0xFF0D47A1).withValues(alpha: 0.3);
         }
-        return Colors.grey.withOpacity(0.3);
+        return Colors.grey.withValues(alpha: 0.3);
       }),
     ),
     dialogTheme: DialogThemeData(
