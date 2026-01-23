@@ -306,12 +306,14 @@ class AppProvider extends ChangeNotifier {
       final status = await _espService.getDeviceStatus(device.ipAddress);
 
       if (status != null) {
-        _devices[i] = device.copyWith(
-          isOnline: true,
-          isOn: status['isOn'] ?? false,
-          lastSeen: DateTime.now(),
-        );
-        onlineCount++;
+  _devices[i] = device.copyWith(
+    isOnline: true,
+    isOn: status['isOn'] ?? false,
+    physicalSwitchOn: status['physicalSwitchOn'] ?? false,  // ADD THIS LINE
+    lastSeen: DateTime.now(),
+  );
+  onlineCount++;
+}
       } else {
         _devices[i] = device.copyWith(
           isOnline: false,
