@@ -40,27 +40,27 @@ class _MainShellState extends State<MainShell> {
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: isDark
-                ? AppTheme.circuitDarkAlt.withOpacity(0.95)
-                : Colors.white.withOpacity(0.95),
+                ? AppTheme.circuitDarkAlt.withValues(alpha: 0.95)
+                : Colors.white.withValues(alpha: 0.95),
             border: Border(
               top: BorderSide(
                 color: isDark
-                    ? AppTheme.neonCyan.withOpacity(0.3)
-                    : Colors.grey.withOpacity(0.2),
+                    ? AppTheme.neonCyan.withValues(alpha: 0.3)
+                    : Colors.grey.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
             boxShadow: isDark
                 ? [
                     BoxShadow(
-                      color: AppTheme.neonCyan.withOpacity(0.1),
+                      color: AppTheme.neonCyan.withValues(alpha: 0.1),
                       blurRadius: 10,
                       offset: const Offset(0, -2),
                     ),
                   ]
                 : [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, -2),
                     ),
@@ -146,7 +146,7 @@ class _NavItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? selectedColor.withOpacity(0.15)
+              ? selectedColor.withValues(alpha: 0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
@@ -163,7 +163,7 @@ class _NavItem extends StatelessWidget {
                   shadows: isSelected && isDark
                       ? [
                           Shadow(
-                            color: selectedColor.withOpacity(0.5),
+                            color: selectedColor.withValues(alpha: 0.5),
                             blurRadius: 10,
                           ),
                         ]
