@@ -324,6 +324,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           // Fetch Status & Master Switch
           // Master Switch
+// Master Switch
 SliverToBoxAdapter(
   child: Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -339,21 +340,33 @@ SliverToBoxAdapter(
     ),
   ),
 ),
-                    child: _ActionButton(
-                      icon: Icons.lightbulb,
-                      label: 'Master Switch',
-                      onTap: () {
-                        _showAuthDialog(context, () {
-                          _showMasterSwitchOptions();
-                        });
-                      },
-                      color: AppTheme.neonAmber,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+
+// Rooms Header
+SliverToBoxAdapter(
+  child: Padding(
+    padding: const EdgeInsets.all(16),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'Rooms Overview',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
           ),
+        ),
+        Text(
+          '${provider.rooms.length} rooms',
+          style: TextStyle(
+            color: isDark ? Colors.white54 : Colors.black54,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    ),
+  ),
+),
 
           // Rooms Header
           SliverToBoxAdapter(
