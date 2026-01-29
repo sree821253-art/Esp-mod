@@ -277,6 +277,9 @@ class AppProvider extends ChangeNotifier {
   }
 
   // Sync - REAL HTTP COMMUNICATION
+// UPDATED syncDevices method - Replace the existing one in app_provider.dart
+
+// Sync - REAL HTTP COMMUNICATION with FULL SENSOR DATA
 Future<void> syncDevices({bool silent = false}) async {
   // Prevent multiple syncs at once
   if (_isSyncing) return;
@@ -322,13 +325,90 @@ Future<void> syncDevices({bool silent = false}) async {
     final status = await _espService.getDeviceStatus(device.ipAddress);
 
     if (status != null) {
+      // Build the update map with all available data
+      final updates = <String, dynamic>{
+        'isOnline': true,
+        'isOn': status['isOn'] ?? false,
+        'physicalSwitchOn': status['physicalSwitchOn'] ?? false,
+        'lastSeen': DateTime.now(),
+      };
+
+      // Add sensor-specific data if available
+      if (status['waterLevel'] != null) {
+        updates['waterLevel'] = status['waterLevel'];
+      }
+      if (status['lpgValue'] != null) {
+        updates['lpgValue'] = status['lpgValue'];
+      }
+      if (status['coValue'] != null) {
+        updates['coValue'] = status['coValue'];
+      }
+      if (status['batteryLevel'] != null) {
+        updates['batteryLevel'] = status['batteryLevel'];
+      }
+      if (status['brightness'] != null) {
+        updates['brightness'] = status['brightness'];
+      }
+      if (status['fanSpeed'] != null) {
+        updates['fanSpeed'] = status['fanSpeed'];
+      }
+
       _devices[i] = device.copyWith(
-        isOnline: true,
-        isOn: status['isOn'] ?? false,
-        physicalSwitchOn: status['physicalSwitchOn'] ?? false,
-        lastSeen: DateTime.now(),
+        isOnline: updates['isOnline'],
+        isOn: updates['isOn'],
+        physicalSwitchOn: updates['physicalSwitchOn'],
+        lastSeen: updates['lastSeen'],
+        waterLevel: updates['waterLevel'],
+        lpgValue: updates['lpgValue'],
+        coValue: updates['coValue'],
+        batteryLevel: updates['batteryLevel'],
+        brightness: updates['brightness'],
+        fanSpeed: updates['fanSpeed'],
       );
+      
       onlineCount++;
+      
+      // Auto-control for water pump in Remote mode
+      if (device.type == DeviceType.waterPump && _appMode == AppMode.remote) {
+        final waterLevel = updates['waterLevel'] ?? device.waterLevel;
+        
+        // Auto ON if below minimum threshold
+        if (waterLevel <= _pumpMinThreshold && !device.isOn) {
+          await turnDeviceOn(device.ipAddress);
+          _devices[i] = _devices[i].copyWith(isOn: true);
+          _addLog(
+            deviceId: device.id,
+            deviceName: device.name,
+            type: LogType.deviceOn,
+            action: 'Auto ON - Below minimum threshold',
+            details: 'Water level: $waterLevel%',
+          );
+        }
+        // Auto OFF if above maximum threshold
+        else if (waterLevel >= _pumpMaxThreshold && device.isOn) {
+          await turnDeviceOff(device.ipAddress);
+          _devices[i] = _devices[i].copyWith(isOn: false);
+          _addLog(
+            deviceId: device.id,
+            deviceName: device.name,
+            type: LogType.deviceOff,
+            action: 'Auto OFF - Above maximum threshold',
+            details: 'Water level: $waterLevel%',
+          );
+        }
+        // Emergency stop
+        else if (waterLevel >= AppProvider.emergencyStopLevel && device.isOn) {
+          await turnDeviceOff(device.ipAddress);
+          _devices[i] = _devices[i].copyWith(isOn: false);
+          _addLog(
+            deviceId: device.id,
+            deviceName: device.name,
+            type: LogType.warning,
+            action: 'EMERGENCY STOP',
+            details: 'Water level reached $waterLevel%',
+          );
+        }
+      }
     } else {
       _devices[i] = device.copyWith(
         isOnline: false,
