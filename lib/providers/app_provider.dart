@@ -279,7 +279,9 @@ class AppProvider extends ChangeNotifier {
   // Sync - REAL HTTP COMMUNICATION
 // UPDATED syncDevices method - Replace the existing one in app_provider.dart
 
-// Sync - REAL HTTP COMMUNICATION with FULL SENSOR DATA
+// CORRECTED syncDevices method - Replace in app_provider.dart
+// The issue was calling turnDeviceOn/turnDeviceOff directly instead of using _espService
+
 Future<void> syncDevices({bool silent = false}) async {
   // Prevent multiple syncs at once
   if (_isSyncing) return;
@@ -374,7 +376,7 @@ Future<void> syncDevices({bool silent = false}) async {
         
         // Auto ON if below minimum threshold
         if (waterLevel <= _pumpMinThreshold && !device.isOn) {
-          await turnDeviceOn(device.ipAddress);
+          await _espService.turnDeviceOn(device.ipAddress);  // FIXED: Use _espService
           _devices[i] = _devices[i].copyWith(isOn: true);
           _addLog(
             deviceId: device.id,
@@ -386,7 +388,7 @@ Future<void> syncDevices({bool silent = false}) async {
         }
         // Auto OFF if above maximum threshold
         else if (waterLevel >= _pumpMaxThreshold && device.isOn) {
-          await turnDeviceOff(device.ipAddress);
+          await _espService.turnDeviceOff(device.ipAddress);  // FIXED: Use _espService
           _devices[i] = _devices[i].copyWith(isOn: false);
           _addLog(
             deviceId: device.id,
@@ -397,8 +399,8 @@ Future<void> syncDevices({bool silent = false}) async {
           );
         }
         // Emergency stop
-        else if (waterLevel >= AppProvider.emergencyStopLevel && device.isOn) {
-          await turnDeviceOff(device.ipAddress);
+        else if (waterLevel >= emergencyStopLevel && device.isOn) {
+          await _espService.turnDeviceOff(device.ipAddress);  // FIXED: Use _espService
           _devices[i] = _devices[i].copyWith(isOn: false);
           _addLog(
             deviceId: device.id,
@@ -439,7 +441,6 @@ Future<void> syncDevices({bool silent = false}) async {
   _saveToStorage();
   notifyListeners();
 }
-
   // Master Switch - REAL HTTP COMMUNICATION
   Future<bool> masterSwitch(String key, bool turnOn) async {
     if (key != authKey) return false;
