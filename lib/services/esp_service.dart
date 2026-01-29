@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 enum DeviceConnectionState { connected, disconnected, connecting }
 
@@ -19,7 +20,7 @@ class EspService {
     }
   }
 
-  // Get device status - UPDATED to fetch all sensor data
+  // Get device status - WITH DETAILED DEBUG LOGGING
   Future<Map<String, dynamic>?> getDeviceStatus(String ipAddress) async {
     try {
       final response = await http
@@ -29,8 +30,15 @@ class EspService {
       if (response.statusCode == 200) {
         final body = response.body.trim();
         
-        // Parse response - expecting format like:
-        // "relay:on,switch:off,water:65,lpg:12.5,co:3.2,battery:87"
+        // DEBUG: Print raw response
+        if (kDebugMode) {
+          print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          print('ESP RESPONSE from $ipAddress');
+          print('Raw body: "$body"');
+          print('Body length: ${body.length}');
+        }
+        
+        // Parse response
         final Map<String, dynamic> status = {
           'online': true,
           'isOn': false,
@@ -40,6 +48,11 @@ class EspService {
         
         // Split by comma and parse key-value pairs
         final parts = body.toLowerCase().split(',');
+        
+        if (kDebugMode) {
+          print('Split into ${parts.length} parts: $parts');
+        }
+        
         for (final part in parts) {
           if (part.contains(':')) {
             final kv = part.split(':');
@@ -47,32 +60,76 @@ class EspService {
               final key = kv[0].trim();
               final value = kv[1].trim();
               
+              if (kDebugMode) {
+                print('Parsing: "$key" = "$value"');
+              }
+              
               switch (key) {
                 case 'relay':
                   status['isOn'] = value == 'on' || value == '1';
+                  if (kDebugMode) print('  → isOn: ${status['isOn']}');
                   break;
+                  
                 case 'switch':
                   status['physicalSwitchOn'] = value == 'on' || value == '1';
+                  if (kDebugMode) print('  → physicalSwitchOn: ${status['physicalSwitchOn']}');
                   break;
+                  
                 case 'water':
                 case 'level':
-                  status['waterLevel'] = int.tryParse(value) ?? 0;
+                  final waterLevel = int.tryParse(value);
+                  if (waterLevel != null) {
+                    status['waterLevel'] = waterLevel;
+                    if (kDebugMode) print('  → waterLevel: $waterLevel');
+                  } else {
+                    if (kDebugMode) print('  → ERROR: Could not parse water level from "$value"');
+                  }
                   break;
+                  
                 case 'lpg':
-                  status['lpgValue'] = double.tryParse(value) ?? 0.0;
+                  final lpg = double.tryParse(value);
+                  if (lpg != null) {
+                    status['lpgValue'] = lpg;
+                    if (kDebugMode) print('  → lpgValue: $lpg');
+                  }
                   break;
+                  
                 case 'co':
-                  status['coValue'] = double.tryParse(value) ?? 0.0;
+                  final co = double.tryParse(value);
+                  if (co != null) {
+                    status['coValue'] = co;
+                    if (kDebugMode) print('  → coValue: $co');
+                  }
                   break;
+                  
                 case 'battery':
-                  status['batteryLevel'] = int.tryParse(value);
+                  final battery = int.tryParse(value);
+                  if (battery != null) {
+                    status['batteryLevel'] = battery;
+                    if (kDebugMode) print('  → batteryLevel: $battery');
+                  } else {
+                    if (kDebugMode) print('  → ERROR: Could not parse battery from "$value"');
+                  }
                   break;
+                  
                 case 'brightness':
-                  status['brightness'] = int.tryParse(value);
+                  final brightness = int.tryParse(value);
+                  if (brightness != null) {
+                    status['brightness'] = brightness;
+                    if (kDebugMode) print('  → brightness: $brightness');
+                  }
                   break;
+                  
                 case 'speed':
-                  status['fanSpeed'] = int.tryParse(value);
+                  final speed = int.tryParse(value);
+                  if (speed != null) {
+                    status['fanSpeed'] = speed;
+                    if (kDebugMode) print('  → fanSpeed: $speed');
+                  }
                   break;
+                  
+                default:
+                  if (kDebugMode) print('  → Unknown key: "$key"');
               }
             }
           } else {
@@ -82,10 +139,22 @@ class EspService {
           }
         }
         
+        // DEBUG: Print final parsed status
+        if (kDebugMode) {
+          print('Final parsed status:');
+          status.forEach((key, value) {
+            print('  $key: $value');
+          });
+          print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        }
+        
         return status;
       }
       return null;
     } catch (e) {
+      if (kDebugMode) {
+        print('ERROR fetching status from $ipAddress: $e');
+      }
       return null;
     }
   }
@@ -160,7 +229,6 @@ class EspService {
       
       if (response.statusCode == 200) {
         // Parse sensor data from response
-        // You may need to adjust this based on your ESP's response format
         return {
           'lpg': 0.0,
           'co': 0.0,
