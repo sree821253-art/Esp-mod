@@ -19,38 +19,76 @@ class EspService {
     }
   }
 
-  // Get device status
+  // Get device status - UPDATED to fetch all sensor data
   Future<Map<String, dynamic>?> getDeviceStatus(String ipAddress) async {
-  try {
-    final response = await http
-        .get(Uri.parse('http://$ipAddress/status'))
-        .timeout(_timeout);
-    
-    if (response.statusCode == 200) {
-      final body = response.body.toLowerCase().trim();
+    try {
+      final response = await http
+          .get(Uri.parse('http://$ipAddress/status'))
+          .timeout(_timeout);
       
-      // Parse response format: "relay:on,switch:off" or just "on"/"off"
-      bool relayOn = body.contains('on') || body == '1';
-      bool switchOn = relayOn; // Default to same as relay
-      
-      // Check if response includes physical switch status
-      if (body.contains('relay:') && body.contains('switch:')) {
-        relayOn = body.contains('relay:on');
-        switchOn = body.contains('switch:on');
+      if (response.statusCode == 200) {
+        final body = response.body.trim();
+        
+        // Parse response - expecting format like:
+        // "relay:on,switch:off,water:65,lpg:12.5,co:3.2,battery:87"
+        final Map<String, dynamic> status = {
+          'online': true,
+          'isOn': false,
+          'physicalSwitchOn': false,
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+        
+        // Split by comma and parse key-value pairs
+        final parts = body.toLowerCase().split(',');
+        for (final part in parts) {
+          if (part.contains(':')) {
+            final kv = part.split(':');
+            if (kv.length == 2) {
+              final key = kv[0].trim();
+              final value = kv[1].trim();
+              
+              switch (key) {
+                case 'relay':
+                  status['isOn'] = value == 'on' || value == '1';
+                  break;
+                case 'switch':
+                  status['physicalSwitchOn'] = value == 'on' || value == '1';
+                  break;
+                case 'water':
+                case 'level':
+                  status['waterLevel'] = int.tryParse(value) ?? 0;
+                  break;
+                case 'lpg':
+                  status['lpgValue'] = double.tryParse(value) ?? 0.0;
+                  break;
+                case 'co':
+                  status['coValue'] = double.tryParse(value) ?? 0.0;
+                  break;
+                case 'battery':
+                  status['batteryLevel'] = int.tryParse(value);
+                  break;
+                case 'brightness':
+                  status['brightness'] = int.tryParse(value);
+                  break;
+                case 'speed':
+                  status['fanSpeed'] = int.tryParse(value);
+                  break;
+              }
+            }
+          } else {
+            // Fallback for simple "on"/"off" response
+            status['isOn'] = body.toLowerCase().contains('on') || body == '1';
+            status['physicalSwitchOn'] = status['isOn'];
+          }
+        }
+        
+        return status;
       }
-      
-      return {
-        'online': true,
-        'isOn': relayOn,
-        'physicalSwitchOn': switchOn,
-        'timestamp': DateTime.now().toIso8601String(),
-      };
+      return null;
+    } catch (e) {
+      return null;
     }
-    return null;
-  } catch (e) {
-    return null;
   }
-}
 
   // Turn device ON
   Future<bool> turnDeviceOn(String ipAddress) async {
