@@ -314,86 +314,76 @@ TextFormField(
                         const SizedBox(height: 16),
                         // Battery toggle
                         Row(
-                          children: [
-                            Icon(
-                              Icons.battery_std,
-                              color: isDark
-                                  ? AppTheme.neonCyan
-                                  : Theme.of(context).primaryColor,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Battery Powered',
-                                    style: TextStyle(
-                                      color: isDark
-                                          ? Colors.white
-                                          : Colors.black87,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Device has a battery',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: isDark
-                                          ? Colors.white54
-                                          : Colors.black54,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Switch(
-                              value: _hasBattery,
-                              onChanged: (value) {
-                                setState(() => _hasBattery = value);
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Submit button
-                  ElevatedButton(
-                    onPressed: _submitForm,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.all(16),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.add,
-                          color: isDark
-                              ? AppTheme.neonCyan
-                              : Colors.white,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Add Device',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? AppTheme.neonCyan : Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                ],
+      children: [
+        Icon(
+          Icons.sensors,
+          color: isDark
+              ? AppTheme.neonCyan
+              : Theme.of(context).primaryColor,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Monitor Child Battery',
+                style: TextStyle(
+                  color: isDark
+                      ? Colors.white
+                      : Colors.black87,
+                ),
               ),
-            ),
+              Text(
+                'Get battery from child device',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark
+                      ? Colors.white54
+                      : Colors.black54,
+                ),
+              ),
+            ],
           ),
         ),
+        Switch(
+          value: _hasChildBattery,
+          onChanged: (value) {
+            setState(() => _hasChildBattery = value);
+          },
+        ),
+      ],
+    ),
+    if (_hasChildBattery) ...[
+      const SizedBox(height: 16),
+      TextFormField(
+        controller: _childIpController,
+        decoration: const InputDecoration(
+          labelText: 'Child Device IP',
+          prefixIcon: Icon(Icons.wifi),
+          hintText: 'e.g., 192.168.1.105',
+        ),
+        keyboardType: TextInputType.number,
+        validator: _hasChildBattery
+            ? (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter child IP address';
+                }
+                final parts = value.split('.');
+                if (parts.length != 4) {
+                  return 'Invalid IP address format';
+                }
+                for (final part in parts) {
+                  final num = int.tryParse(part);
+                  if (num == null || num < 0 || num > 255) {
+                    return 'Invalid IP address';
+                  }
+                }
+                return null;
+              }
+            : null,
       ),
-    );
+    ],
   }
 
   void _submitForm() {
@@ -403,16 +393,18 @@ TextFormField(
 
     final provider = context.read<AppProvider>();
     final device = Device(
-  id: const Uuid().v4(),
-  name: _nameController.text.trim(),
-  type: _selectedType,
-  ipAddress: _ipController.text.trim(),
-  gpioPin: int.tryParse(_gpioController.text),
-  statusGpioPin: int.tryParse(_statusGpioController.text), // ADD THIS LINE
-  roomId: _selectedRoomId,
+      id: const Uuid().v4(),
+      name: _nameController.text.trim(),
+      type: _selectedType,
+      ipAddress: _ipController.text.trim(),
+      gpioPin: int.tryParse(_gpioController.text),
+      statusGpioPin: int.tryParse(_statusGpioController.text),
+      roomId: _selectedRoomId,
       hasBattery: _hasBattery,
       batteryLevel: _hasBattery ? 100 : null,
-      isOnline: true, // Assume online initially
+      hasChildBattery: _hasChildBattery,                      // NEW
+      childIp: _hasChildBattery ? _childIpController.text.trim() : null,  // NEW
+      isOnline: true,
     );
 
     provider.addDevice(device);
