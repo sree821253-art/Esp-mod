@@ -278,15 +278,11 @@ class AppProvider extends ChangeNotifier {
 
   // Sync - REAL HTTP COMMUNICATION
 /// DIAGNOSTIC syncDevices - Replace in app_provider.dart temporarily
-// This version has extensive logging to see exactly what's happening
-
 Future<void> syncDevices({bool silent = false}) async {
-  // Prevent multiple syncs at once
   if (_isSyncing) return;
   
   _isSyncing = true;
   
-  // Only show UI updates if not silent
   if (!silent) {
     _syncProgress = 0;
     notifyListeners();
@@ -326,7 +322,8 @@ Future<void> syncDevices({bool silent = false}) async {
       print('\n╔═══════════════════════════════════════════════════════');
       print('║ SYNCING DEVICE: ${device.name}');
       print('║ IP: ${device.ipAddress}');
-      print('║ Type: ${device.type.displayName}');
+      print('║ Has child: ${device.hasChildBattery}');
+      print('║ Child IP: ${device.childIp}');
       print('╚═══════════════════════════════════════════════════════');
     }
 
@@ -337,7 +334,6 @@ Future<void> syncDevices({bool silent = false}) async {
         print('✓ Got status from ${device.name}');
       }
       
-      // Build the update map with all available data
       final updates = <String, dynamic>{
         'isOnline': true,
         'isOn': status['isOn'] ?? false,
@@ -345,67 +341,55 @@ Future<void> syncDevices({bool silent = false}) async {
         'lastSeen': DateTime.now(),
       };
 
-      // Add sensor-specific data if available
+      // Add sensor data from parent
       if (status['waterLevel'] != null) {
         updates['waterLevel'] = status['waterLevel'];
-        if (kDebugMode) {
-          print('  → Adding waterLevel: ${status['waterLevel']}');
-        }
-      } else {
-        if (kDebugMode) {
-          print('  ⚠ waterLevel is NULL in status!');
-        }
       }
-      
       if (status['lpgValue'] != null) {
         updates['lpgValue'] = status['lpgValue'];
-        if (kDebugMode) {
-          print('  → Adding lpgValue: ${status['lpgValue']}');
-        }
       }
-      
       if (status['coValue'] != null) {
         updates['coValue'] = status['coValue'];
-        if (kDebugMode) {
-          print('  → Adding coValue: ${status['coValue']}');
-        }
       }
-      
       if (status['batteryLevel'] != null) {
         updates['batteryLevel'] = status['batteryLevel'];
-        if (kDebugMode) {
-          print('  → Adding batteryLevel: ${status['batteryLevel']}');
-        }
-      } else {
-        if (kDebugMode) {
-          print('  ⚠ batteryLevel is NULL in status!');
-        }
       }
-      
       if (status['brightness'] != null) {
         updates['brightness'] = status['brightness'];
-        if (kDebugMode) {
-          print('  → Adding brightness: ${status['brightness']}');
-        }
       }
-      
       if (status['fanSpeed'] != null) {
         updates['fanSpeed'] = status['fanSpeed'];
+      }
+
+      // NEW: Fetch child battery if configured
+      if (device.hasChildBattery && device.childIp != null && device.childIp!.isNotEmpty) {
         if (kDebugMode) {
-          print('  → Adding fanSpeed: ${status['fanSpeed']}');
+          print('\n🔋 Fetching child battery from ${device.childIp}...');
+        }
+        
+        final childStatus = await _espService.getChildStatus(device.childIp!);
+        
+        if (childStatus != null) {
+          if (childStatus['childBatteryLevel'] != null) {
+            updates['childBatteryLevel'] = childStatus['childBatteryLevel'];
+            if (kDebugMode) {
+              print('✓ Child battery: ${childStatus['childBatteryLevel']}%');
+            }
+          }
+          
+          // Also update water level from child if available
+          if (childStatus['waterLevel'] != null) {
+            updates['waterLevel'] = childStatus['waterLevel'];
+            if (kDebugMode) {
+              print('✓ Water level from child: ${childStatus['waterLevel']}%');
+            }
+          }
+        } else {
+          if (kDebugMode) {
+            print('✗ Could not fetch child status');
+          }
         }
       }
-
-      if (kDebugMode) {
-        print('\n📦 Updates map:');
-        updates.forEach((key, value) {
-          print('   $key: $value');
-        });
-      }
-
-      // Store old values for comparison
-      final oldWaterLevel = device.waterLevel;
-      final oldBattery = device.batteryLevel;
 
       _devices[i] = device.copyWith(
         isOnline: updates['isOnline'],
@@ -416,34 +400,18 @@ Future<void> syncDevices({bool silent = false}) async {
         lpgValue: updates['lpgValue'],
         coValue: updates['coValue'],
         batteryLevel: updates['batteryLevel'],
+        childBatteryLevel: updates['childBatteryLevel'],  // NEW
         brightness: updates['brightness'],
         fanSpeed: updates['fanSpeed'],
       );
       
-      if (kDebugMode) {
-        print('\n🔄 Device updated:');
-        print('   Old water level: $oldWaterLevel → New: ${_devices[i].waterLevel}');
-        print('   Old battery: $oldBattery → New: ${_devices[i].batteryLevel}');
-        print('   hasBattery flag: ${_devices[i].hasBattery}');
-      }
-      
       onlineCount++;
       
-      // Auto-control for water pump in Remote mode
+      // Auto-control for water pump (existing code...)
       if (device.type == DeviceType.waterPump && _appMode == AppMode.remote) {
         final waterLevel = updates['waterLevel'] ?? device.waterLevel;
         
-        if (kDebugMode) {
-          print('\n💧 Water Pump Auto-Control Check:');
-          print('   Water level: $waterLevel%');
-          print('   Min threshold: $_pumpMinThreshold%');
-          print('   Max threshold: $_pumpMaxThreshold%');
-          print('   Currently: ${device.isOn ? "ON" : "OFF"}');
-        }
-        
-        // Auto ON if below minimum threshold
         if (waterLevel <= _pumpMinThreshold && !device.isOn) {
-          if (kDebugMode) print('   ▶ Turning ON (below min)');
           await _espService.turnDeviceOn(device.ipAddress);
           _devices[i] = _devices[i].copyWith(isOn: true);
           _addLog(
@@ -454,9 +422,7 @@ Future<void> syncDevices({bool silent = false}) async {
             details: 'Water level: $waterLevel%',
           );
         }
-        // Auto OFF if above maximum threshold
         else if (waterLevel >= _pumpMaxThreshold && device.isOn) {
-          if (kDebugMode) print('   ▪ Turning OFF (above max)');
           await _espService.turnDeviceOff(device.ipAddress);
           _devices[i] = _devices[i].copyWith(isOn: false);
           _addLog(
@@ -467,9 +433,7 @@ Future<void> syncDevices({bool silent = false}) async {
             details: 'Water level: $waterLevel%',
           );
         }
-        // Emergency stop
         else if (waterLevel >= emergencyStopLevel && device.isOn) {
-          if (kDebugMode) print('   🚨 EMERGENCY STOP!');
           await _espService.turnDeviceOff(device.ipAddress);
           _devices[i] = _devices[i].copyWith(isOn: false);
           _addLog(
@@ -479,8 +443,6 @@ Future<void> syncDevices({bool silent = false}) async {
             action: 'EMERGENCY STOP',
             details: 'Water level reached $waterLevel%',
           );
-        } else {
-          if (kDebugMode) print('   ✓ No action needed');
         }
       }
     } else {
@@ -493,7 +455,6 @@ Future<void> syncDevices({bool silent = false}) async {
       );
     }
 
-    // Only update progress UI if not silent
     if (!silent) {
       _syncProgress = (i + 1) / totalDevices;
       notifyListeners();
@@ -501,7 +462,6 @@ Future<void> syncDevices({bool silent = false}) async {
     }
   }
 
-  // Only log if not silent
   if (!silent) {
     _addLog(
       deviceId: 'system',
@@ -515,6 +475,7 @@ Future<void> syncDevices({bool silent = false}) async {
   _isSyncing = false;
   _saveToStorage();
   notifyListeners();
+
   
   if (kDebugMode) {
     print('\n═══════════════════════════════════════════════════════');
