@@ -22,10 +22,12 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
 final _ipController = TextEditingController();
 final _gpioController = TextEditingController();
 final _statusGpioController = TextEditingController(); // ADD THIS LINE
+  final _childIpController = TextEditingController();
 
   DeviceType _selectedType = DeviceType.light;
   String? _selectedRoomId;
   bool _hasBattery = false;
+  bool _hasChildBattery = false;
 
   @override
   void initState() {
@@ -39,6 +41,7 @@ void dispose() {
   _ipController.dispose();
   _gpioController.dispose();
   _statusGpioController.dispose(); // ADD THIS LINE
+  _childIpController.dispose();  // NEW
   super.dispose();
 }
 
