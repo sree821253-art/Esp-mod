@@ -424,99 +424,137 @@ if (!isRemoteMode)
   final nameController = TextEditingController(text: device.name);
   final ipController = TextEditingController(text: device.ipAddress);
   final gpioController = TextEditingController(text: device.gpioPin?.toString() ?? '');
-  final statusGpioController = TextEditingController(text: device.statusGpioPin?.toString() ?? '');  // ADD THIS
+  final statusGpioController = TextEditingController(text: device.statusGpioPin?.toString() ?? '');
+  final childIpController = TextEditingController(text: device.childIp ?? '');  // NEW
+  bool hasChildBattery = device.hasChildBattery;  // NEW
 
   showDialog(
     context: context,
-    builder: (context) => AlertDialog(
-      backgroundColor: isDark ? AppTheme.circuitDarkAlt : Colors.white,
-      title: Row(
-        children: [
-          Icon(
-            Icons.edit,
-            color: isDark ? AppTheme.neonCyan : Theme.of(context).primaryColor,
-          ),
-          const SizedBox(width: 8),
-          const Text('Edit Device'),
-        ],
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    builder: (context) => StatefulBuilder(  // Changed to StatefulBuilder
+      builder: (context, setState) => AlertDialog(
+        backgroundColor: isDark ? AppTheme.circuitDarkAlt : Colors.white,
+        title: Row(
           children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Device Name',
-                prefixIcon: Icon(Icons.label_outline),
-              ),
+            Icon(
+              Icons.edit,
+              color: isDark ? AppTheme.neonCyan : Theme.of(context).primaryColor,
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: ipController,
-              decoration: const InputDecoration(
-                labelText: 'IP Address',
-                prefixIcon: Icon(Icons.wifi),
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: gpioController,
-              decoration: const InputDecoration(
-                labelText: 'GPIO Pin',  // CHANGED: Removed (optional)
-                prefixIcon: Icon(Icons.memory),
-                hintText: 'e.g., 2',
-              ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: statusGpioController,  // ADD THIS FIELD
-              decoration: const InputDecoration(
-                labelText: 'Status GPIO Pin',
-                prefixIcon: Icon(Icons.sensors),
-                hintText: 'e.g., 4 - reads switch state',
-              ),
-              keyboardType: TextInputType.number,
-            ),
+            const SizedBox(width: 8),
+            const Text('Edit Device'),
           ],
         ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            if (nameController.text.trim().isEmpty ||
-                ipController.text.trim().isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Please fill required fields')),
-              );
-              return;
-            }
-
-            final provider = context.read<AppProvider>();
-            provider.updateDevice(device.copyWith(
-              name: nameController.text.trim(),
-              ipAddress: ipController.text.trim(),
-              gpioPin: int.tryParse(gpioController.text),
-              statusGpioPin: int.tryParse(statusGpioController.text),  // ADD THIS
-            ));
-
-            Navigator.pop(context);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Device updated'),
-                backgroundColor: Colors.green,
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Device Name',
+                  prefixIcon: Icon(Icons.label_outline),
+                ),
               ),
-            );
-          },
-          child: const Text('Save'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: ipController,
+                decoration: const InputDecoration(
+                  labelText: 'IP Address',
+                  prefixIcon: Icon(Icons.wifi),
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: gpioController,
+                decoration: const InputDecoration(
+                  labelText: 'GPIO Pin',
+                  prefixIcon: Icon(Icons.memory),
+                  hintText: 'e.g., 2',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: statusGpioController,
+                decoration: const InputDecoration(
+                  labelText: 'Status GPIO Pin',
+                  prefixIcon: Icon(Icons.sensors),
+                  hintText: 'e.g., 4',
+                ),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
+              // NEW: Child Battery Toggle
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Monitor Child Battery',
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                  Switch(
+                    value: hasChildBattery,
+                    onChanged: (value) {
+                      setState(() => hasChildBattery = value);
+                    },
+                  ),
+                ],
+              ),
+              if (hasChildBattery) ...[
+                const SizedBox(height: 16),
+                TextField(
+                  controller: childIpController,
+                  decoration: const InputDecoration(
+                    labelText: 'Child Device IP',
+                    prefixIcon: Icon(Icons.link),
+                    hintText: 'e.g., 192.168.1.105',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ],
+          ),
         ),
-      ],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (nameController.text.trim().isEmpty ||
+                  ipController.text.trim().isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please fill required fields')),
+                );
+                return;
+              }
+
+              final provider = context.read<AppProvider>();
+              provider.updateDevice(device.copyWith(
+                name: nameController.text.trim(),
+                ipAddress: ipController.text.trim(),
+                gpioPin: int.tryParse(gpioController.text),
+                statusGpioPin: int.tryParse(statusGpioController.text),
+                hasChildBattery: hasChildBattery,                          // NEW
+                childIp: hasChildBattery ? childIpController.text.trim() : null,  // NEW
+              ));
+
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Device updated'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
     ),
   );
 }
