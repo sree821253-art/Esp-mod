@@ -206,6 +206,26 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                               ? AppTheme.neonGreen
                               : AppTheme.neonRed,
                         ),
+                      // In the Device Information section, add after the battery level:
+
+if (device.hasChildBattery && device.childBatteryLevel != null)
+  _InfoRow(
+    icon: device.childBatteryLevel! > 20
+        ? Icons.battery_charging_full
+        : Icons.battery_alert,
+    label: 'Child Battery',
+    value: '${device.childBatteryLevel}%',
+    color: device.childBatteryLevel! > 20
+        ? AppTheme.neonGreen
+        : AppTheme.neonRed,
+  ),
+if (device.hasChildBattery && device.childIp != null)
+  _InfoRow(
+    icon: Icons.link,
+    label: 'Child IP',
+    value: device.childIp!,
+    color: isDark ? AppTheme.neonCyan : Colors.blue,
+  ),
                       _InfoRow(
                         icon: Icons.access_time,
                         label: 'Last Seen',
