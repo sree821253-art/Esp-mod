@@ -19,9 +19,9 @@ class AddDeviceScreen extends StatefulWidget {
 class _AddDeviceScreenState extends State<AddDeviceScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-final _ipController = TextEditingController();
-final _gpioController = TextEditingController();
-final _statusGpioController = TextEditingController(); // ADD THIS LINE
+  final _ipController = TextEditingController();
+  final _gpioController = TextEditingController();
+  final _statusGpioController = TextEditingController();
   final _childIpController = TextEditingController();
 
   DeviceType _selectedType = DeviceType.light;
@@ -36,14 +36,14 @@ final _statusGpioController = TextEditingController(); // ADD THIS LINE
   }
 
   @override
-void dispose() {
-  _nameController.dispose();
-  _ipController.dispose();
-  _gpioController.dispose();
-  _statusGpioController.dispose(); // ADD THIS LINE
-  _childIpController.dispose();  // NEW
-  super.dispose();
-}
+  void dispose() {
+    _nameController.dispose();
+    _ipController.dispose();
+    _gpioController.dispose();
+    _statusGpioController.dispose();
+    _childIpController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -266,16 +266,17 @@ void dispose() {
                           keyboardType: TextInputType.number,
                         ),
                         const SizedBox(height: 16),
-// Status GPIO Pin
-TextFormField(
-  controller: _statusGpioController, // You need to add this controller
-  decoration: const InputDecoration(
-    labelText: 'Status GPIO Pin (Optional)',
-    prefixIcon: Icon(Icons.sensors),
-    hintText: 'e.g., 4 - reads actual switch state',
-  ),
-  keyboardType: TextInputType.number,
-),
+                        // Status GPIO Pin
+                        TextFormField(
+                          controller: _statusGpioController,
+                          decoration: const InputDecoration(
+                            labelText: 'Status GPIO Pin (Optional)',
+                            prefixIcon: Icon(Icons.sensors),
+                            hintText: 'e.g., 4 - reads actual switch state',
+                          ),
+                          keyboardType: TextInputType.number,
+                        ),
+                        const SizedBox(height: 16),
                         // Room selection
                         DropdownButtonFormField<String?>(
                           value: _selectedRoomId,
@@ -314,76 +315,159 @@ TextFormField(
                         const SizedBox(height: 16),
                         // Battery toggle
                         Row(
-      children: [
-        Icon(
-          Icons.sensors,
-          color: isDark
-              ? AppTheme.neonCyan
-              : Theme.of(context).primaryColor,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Monitor Child Battery',
-                style: TextStyle(
-                  color: isDark
-                      ? Colors.white
-                      : Colors.black87,
-                ),
+                          children: [
+                            Icon(
+                              Icons.battery_std,
+                              color: isDark
+                                  ? AppTheme.neonCyan
+                                  : Theme.of(context).primaryColor,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Battery Powered',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Device has a battery',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark
+                                          ? Colors.white54
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: _hasBattery,
+                              onChanged: (value) {
+                                setState(() => _hasBattery = value);
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // Child Battery Configuration
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.sensors,
+                              color: isDark
+                                  ? AppTheme.neonCyan
+                                  : Theme.of(context).primaryColor,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Monitor Child Battery',
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Get battery from child device',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark
+                                          ? Colors.white54
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: _hasChildBattery,
+                              onChanged: (value) {
+                                setState(() => _hasChildBattery = value);
+                              },
+                            ),
+                          ],
+                        ),
+                        if (_hasChildBattery) ...[
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _childIpController,
+                            decoration: const InputDecoration(
+                              labelText: 'Child Device IP',
+                              prefixIcon: Icon(Icons.wifi),
+                              hintText: 'e.g., 192.168.1.105',
+                            ),
+                            keyboardType: TextInputType.number,
+                            validator: _hasChildBattery
+                                ? (value) {
+                                    if (value == null || value.trim().isEmpty) {
+                                      return 'Please enter child IP address';
+                                    }
+                                    final parts = value.split('.');
+                                    if (parts.length != 4) {
+                                      return 'Invalid IP address format';
+                                    }
+                                    for (final part in parts) {
+                                      final num = int.tryParse(part);
+                                      if (num == null || num < 0 || num > 255) {
+                                        return 'Invalid IP address';
+                                      }
+                                    }
+                                    return null;
+                                  }
+                                : null,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Submit button
+                  ElevatedButton(
+                    onPressed: _submitForm,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.all(16),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add,
+                          color: isDark
+                              ? AppTheme.neonCyan
+                              : Colors.white,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Add Device',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppTheme.neonCyan : Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                ],
               ),
-              Text(
-                'Get battery from child device',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark
-                      ? Colors.white54
-                      : Colors.black54,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
-        Switch(
-          value: _hasChildBattery,
-          onChanged: (value) {
-            setState(() => _hasChildBattery = value);
-          },
-        ),
-      ],
-    ),
-    if (_hasChildBattery) ...[
-      const SizedBox(height: 16),
-      TextFormField(
-        controller: _childIpController,
-        decoration: const InputDecoration(
-          labelText: 'Child Device IP',
-          prefixIcon: Icon(Icons.wifi),
-          hintText: 'e.g., 192.168.1.105',
-        ),
-        keyboardType: TextInputType.number,
-        validator: _hasChildBattery
-            ? (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter child IP address';
-                }
-                final parts = value.split('.');
-                if (parts.length != 4) {
-                  return 'Invalid IP address format';
-                }
-                for (final part in parts) {
-                  final num = int.tryParse(part);
-                  if (num == null || num < 0 || num > 255) {
-                    return 'Invalid IP address';
-                  }
-                }
-                return null;
-              }
-            : null,
       ),
-    ],
+    );
   }
 
   void _submitForm() {
@@ -402,8 +486,8 @@ TextFormField(
       roomId: _selectedRoomId,
       hasBattery: _hasBattery,
       batteryLevel: _hasBattery ? 100 : null,
-      hasChildBattery: _hasChildBattery,                      // NEW
-      childIp: _hasChildBattery ? _childIpController.text.trim() : null,  // NEW
+      hasChildBattery: _hasChildBattery,
+      childIp: _hasChildBattery ? _childIpController.text.trim() : null,
       isOnline: true,
     );
 
