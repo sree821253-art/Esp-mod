@@ -350,6 +350,27 @@ class _DeviceCard extends StatelessWidget {
                               ),
                             ),
                           ],
+                          // In the _DeviceCard header row, after the main battery indicator:
+
+if (device.hasChildBattery && device.childBatteryLevel != null) ...[
+  const SizedBox(width: 8),
+  Icon(
+    Icons.battery_charging_full,
+    size: 14,
+    color: device.childBatteryLevel! > 20
+        ? AppTheme.neonGreen
+        : AppTheme.neonRed,
+  ),
+  Text(
+    'C:${device.childBatteryLevel}%',  // C for Child
+    style: TextStyle(
+      fontSize: 12,
+      color: device.childBatteryLevel! > 20
+          ? AppTheme.neonGreen
+          : AppTheme.neonRed,
+    ),
+  ),
+],
                           if (device.isStale) ...[
                             const SizedBox(width: 8),
                             Container(
