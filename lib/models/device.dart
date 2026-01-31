@@ -1,67 +1,3 @@
-import 'package:flutter/material.dart';
-
-enum DeviceType {
-  light,
-  fan,
-  waterPump,
-  gasSensor,
-  sensorOnly,
-  custom,
-}
-
-extension DeviceTypeExtension on DeviceType {
-  String get displayName {
-    switch (this) {
-      case DeviceType.light:
-        return 'Light';
-      case DeviceType.fan:
-        return 'Fan';
-      case DeviceType.waterPump:
-        return 'Water Pump';
-      case DeviceType.gasSensor:
-        return 'Gas Sensor';
-      case DeviceType.sensorOnly:
-        return 'Sensor Only';
-      case DeviceType.custom:
-        return 'Custom';
-    }
-  }
-
-  IconData get icon {
-    switch (this) {
-      case DeviceType.light:
-        return Icons.lightbulb_outline;
-      case DeviceType.fan:
-        return Icons.air;
-      case DeviceType.waterPump:
-        return Icons.water_drop_outlined;
-      case DeviceType.gasSensor:
-        return Icons.sensors;
-      case DeviceType.sensorOnly:
-        return Icons.speed;
-      case DeviceType.custom:
-        return Icons.settings_input_component;
-    }
-  }
-
-  Color get color {
-    switch (this) {
-      case DeviceType.light:
-        return const Color(0xFFFFEB3B);
-      case DeviceType.fan:
-        return const Color(0xFF00BCD4);
-      case DeviceType.waterPump:
-        return const Color(0xFF2196F3);
-      case DeviceType.gasSensor:
-        return const Color(0xFFFF9800);
-      case DeviceType.sensorOnly:
-        return const Color(0xFF9C27B0);
-      case DeviceType.custom:
-        return const Color(0xFF607D8B);
-    }
-  }
-}
-
 class Device {
   final String id;
   String name;
@@ -72,17 +8,20 @@ class Device {
   String? roomId;
   bool isParent;
   String? parentId;
+  String? childIp;              // NEW: IP of child device for status monitoring
   String? staticIP;
   bool isOn;
   bool physicalSwitchOn;
   bool isOnline;
   int? batteryLevel;
   bool hasBattery;
-  int brightness; // 0-100 for lights
-  int fanSpeed; // 1-5 for fans
-  int waterLevel; // 0-100 for pumps
-  double lpgValue; // For gas sensors
-  double coValue; // For gas sensors
+  int? childBatteryLevel;       // NEW: Battery level from child device
+  bool hasChildBattery;         // NEW: Whether to monitor child's battery
+  int brightness;
+  int fanSpeed;
+  int waterLevel;
+  double lpgValue;
+  double coValue;
   bool notificationsEnabled;
   DateTime lastSeen;
   DateTime createdAt;
@@ -97,12 +36,15 @@ class Device {
     this.roomId,
     this.isParent = false,
     this.parentId,
+    this.childIp,              // NEW
     this.staticIP,
     this.isOn = false,
     this.physicalSwitchOn = false,
     this.isOnline = false,
     this.batteryLevel,
     this.hasBattery = false,
+    this.childBatteryLevel,    // NEW
+    this.hasChildBattery = false, // NEW
     this.brightness = 100,
     this.fanSpeed = 1,
     this.waterLevel = 50,
@@ -124,12 +66,15 @@ class Device {
     String? roomId,
     bool? isParent,
     String? parentId,
+    String? childIp,           // NEW
     String? staticIP,
     bool? isOn,
     bool? physicalSwitchOn,
     bool? isOnline,
     int? batteryLevel,
     bool? hasBattery,
+    int? childBatteryLevel,    // NEW
+    bool? hasChildBattery,     // NEW
     int? brightness,
     int? fanSpeed,
     int? waterLevel,
@@ -149,12 +94,15 @@ class Device {
       roomId: roomId ?? this.roomId,
       isParent: isParent ?? this.isParent,
       parentId: parentId ?? this.parentId,
+      childIp: childIp ?? this.childIp,                    // NEW
       staticIP: staticIP ?? this.staticIP,
       isOn: isOn ?? this.isOn,
       physicalSwitchOn: physicalSwitchOn ?? this.physicalSwitchOn,
       isOnline: isOnline ?? this.isOnline,
       batteryLevel: batteryLevel ?? this.batteryLevel,
       hasBattery: hasBattery ?? this.hasBattery,
+      childBatteryLevel: childBatteryLevel ?? this.childBatteryLevel,  // NEW
+      hasChildBattery: hasChildBattery ?? this.hasChildBattery,        // NEW
       brightness: brightness ?? this.brightness,
       fanSpeed: fanSpeed ?? this.fanSpeed,
       waterLevel: waterLevel ?? this.waterLevel,
@@ -176,12 +124,15 @@ class Device {
         'roomId': roomId,
         'isParent': isParent,
         'parentId': parentId,
+        'childIp': childIp,                    // NEW
         'staticIP': staticIP,
         'isOn': isOn,
         'physicalSwitchOn': physicalSwitchOn,
         'isOnline': isOnline,
         'batteryLevel': batteryLevel,
         'hasBattery': hasBattery,
+        'childBatteryLevel': childBatteryLevel,  // NEW
+        'hasChildBattery': hasChildBattery,      // NEW
         'brightness': brightness,
         'fanSpeed': fanSpeed,
         'waterLevel': waterLevel,
@@ -202,12 +153,15 @@ class Device {
         roomId: json['roomId'],
         isParent: json['isParent'] ?? false,
         parentId: json['parentId'],
+        childIp: json['childIp'],                           // NEW
         staticIP: json['staticIP'],
         isOn: json['isOn'] ?? false,
         physicalSwitchOn: json['physicalSwitchOn'] ?? false,
         isOnline: json['isOnline'] ?? false,
         batteryLevel: json['batteryLevel'],
         hasBattery: json['hasBattery'] ?? false,
+        childBatteryLevel: json['childBatteryLevel'],       // NEW
+        hasChildBattery: json['hasChildBattery'] ?? false,  // NEW
         brightness: json['brightness'] ?? 100,
         fanSpeed: json['fanSpeed'] ?? 1,
         waterLevel: json['waterLevel'] ?? 50,
