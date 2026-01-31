@@ -20,88 +20,227 @@ class EspService {
     }
   }
 
-  // Get status from child device (for battery, sensors, etc.)
-Future<Map<String, dynamic>?> getChildStatus(String childIpAddress) async {
-  try {
-    final response = await http
-        .get(Uri.parse('http://$childIpAddress/status'))
-        .timeout(_timeout);
-    
-    if (response.statusCode == 200) {
-      final body = response.body.trim();
+  // Get device status - WITH DETAILED DEBUG LOGGING
+  Future<Map<String, dynamic>?> getDeviceStatus(String ipAddress) async {
+    try {
+      final response = await http
+          .get(Uri.parse('http://$ipAddress/status'))
+          .timeout(_timeout);
       
-      if (kDebugMode) {
-        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        print('CHILD STATUS from $childIpAddress');
-        print('Raw body: "$body"');
+      if (response.statusCode == 200) {
+        final body = response.body.trim();
+        
+        // DEBUG: Print raw response
+        if (kDebugMode) {
+          print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          print('ESP RESPONSE from $ipAddress');
+          print('Raw body: "$body"');
+          print('Body length: ${body.length}');
+        }
+        
+        // Parse response
+        final Map<String, dynamic> status = {
+          'online': true,
+          'isOn': false,
+          'physicalSwitchOn': false,
+          'timestamp': DateTime.now().toIso8601String(),
+        };
+        
+        // Split by comma and parse key-value pairs
+        final parts = body.toLowerCase().split(',');
+        
+        if (kDebugMode) {
+          print('Split into ${parts.length} parts: $parts');
+        }
+        
+        for (final part in parts) {
+          if (part.contains(':')) {
+            final kv = part.split(':');
+            if (kv.length == 2) {
+              final key = kv[0].trim();
+              final value = kv[1].trim();
+              
+              if (kDebugMode) {
+                print('Parsing: "$key" = "$value"');
+              }
+              
+              switch (key) {
+                case 'relay':
+                  status['isOn'] = value == 'on' || value == '1';
+                  if (kDebugMode) print('  → isOn: ${status['isOn']}');
+                  break;
+                  
+                case 'switch':
+                  status['physicalSwitchOn'] = value == 'on' || value == '1';
+                  if (kDebugMode) print('  → physicalSwitchOn: ${status['physicalSwitchOn']}');
+                  break;
+                  
+                case 'water':
+                case 'level':
+                  final waterLevel = int.tryParse(value);
+                  if (waterLevel != null) {
+                    status['waterLevel'] = waterLevel;
+                    if (kDebugMode) print('  → waterLevel: $waterLevel');
+                  } else {
+                    if (kDebugMode) print('  → ERROR: Could not parse water level from "$value"');
+                  }
+                  break;
+                  
+                case 'lpg':
+                  final lpg = double.tryParse(value);
+                  if (lpg != null) {
+                    status['lpgValue'] = lpg;
+                    if (kDebugMode) print('  → lpgValue: $lpg');
+                  }
+                  break;
+                  
+                case 'co':
+                  final co = double.tryParse(value);
+                  if (co != null) {
+                    status['coValue'] = co;
+                    if (kDebugMode) print('  → coValue: $co');
+                  }
+                  break;
+                  
+                case 'battery':
+                  final battery = int.tryParse(value);
+                  if (battery != null) {
+                    status['batteryLevel'] = battery;
+                    if (kDebugMode) print('  → batteryLevel: $battery');
+                  } else {
+                    if (kDebugMode) print('  → ERROR: Could not parse battery from "$value"');
+                  }
+                  break;
+                  
+                case 'brightness':
+                  final brightness = int.tryParse(value);
+                  if (brightness != null) {
+                    status['brightness'] = brightness;
+                    if (kDebugMode) print('  → brightness: $brightness');
+                  }
+                  break;
+                  
+                case 'speed':
+                  final speed = int.tryParse(value);
+                  if (speed != null) {
+                    status['fanSpeed'] = speed;
+                    if (kDebugMode) print('  → fanSpeed: $speed');
+                  }
+                  break;
+                  
+                default:
+                  if (kDebugMode) print('  → Unknown key: "$key"');
+              }
+            }
+          } else {
+            // Fallback for simple "on"/"off" response
+            status['isOn'] = body.toLowerCase().contains('on') || body == '1';
+            status['physicalSwitchOn'] = status['isOn'];
+          }
+        }
+        
+        // DEBUG: Print final parsed status
+        if (kDebugMode) {
+          print('Final parsed status:');
+          status.forEach((key, value) {
+            print('  $key: $value');
+          });
+          print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        }
+        
+        return status;
       }
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('ERROR fetching status from $ipAddress: $e');
+      }
+      return null;
+    }
+  }
+
+  // NEW: Get status from child device (for battery, sensors, etc.)
+  Future<Map<String, dynamic>?> getChildStatus(String childIpAddress) async {
+    try {
+      final response = await http
+          .get(Uri.parse('http://$childIpAddress/status'))
+          .timeout(_timeout);
       
-      final Map<String, dynamic> status = {};
-      final parts = body.toLowerCase().split(',');
-      
-      for (final part in parts) {
-        if (part.contains(':')) {
-          final kv = part.split(':');
-          if (kv.length == 2) {
-            final key = kv[0].trim();
-            final value = kv[1].trim();
-            
-            switch (key) {
-              case 'battery':
-                final battery = int.tryParse(value);
-                if (battery != null) {
-                  status['childBatteryLevel'] = battery;
-                  if (kDebugMode) print('  → childBatteryLevel: $battery');
-                }
-                break;
-                
-              case 'water':
-              case 'level':
-                final waterLevel = int.tryParse(value);
-                if (waterLevel != null) {
-                  status['waterLevel'] = waterLevel;
-                  if (kDebugMode) print('  → waterLevel: $waterLevel');
-                }
-                break;
-                
-              case 'lpg':
-                final lpg = double.tryParse(value);
-                if (lpg != null) {
-                  status['lpgValue'] = lpg;
-                  if (kDebugMode) print('  → lpgValue: $lpg');
-                }
-                break;
-                
-              case 'co':
-                final co = double.tryParse(value);
-                if (co != null) {
-                  status['coValue'] = co;
-                  if (kDebugMode) print('  → coValue: $co');
-                }
-                break;
+      if (response.statusCode == 200) {
+        final body = response.body.trim();
+        
+        if (kDebugMode) {
+          print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          print('CHILD STATUS from $childIpAddress');
+          print('Raw body: "$body"');
+        }
+        
+        final Map<String, dynamic> status = {};
+        final parts = body.toLowerCase().split(',');
+        
+        for (final part in parts) {
+          if (part.contains(':')) {
+            final kv = part.split(':');
+            if (kv.length == 2) {
+              final key = kv[0].trim();
+              final value = kv[1].trim();
+              
+              switch (key) {
+                case 'battery':
+                  final battery = int.tryParse(value);
+                  if (battery != null) {
+                    status['childBatteryLevel'] = battery;
+                    if (kDebugMode) print('  → childBatteryLevel: $battery');
+                  }
+                  break;
+                  
+                case 'water':
+                case 'level':
+                  final waterLevel = int.tryParse(value);
+                  if (waterLevel != null) {
+                    status['waterLevel'] = waterLevel;
+                    if (kDebugMode) print('  → waterLevel: $waterLevel');
+                  }
+                  break;
+                  
+                case 'lpg':
+                  final lpg = double.tryParse(value);
+                  if (lpg != null) {
+                    status['lpgValue'] = lpg;
+                    if (kDebugMode) print('  → lpgValue: $lpg');
+                  }
+                  break;
+                  
+                case 'co':
+                  final co = double.tryParse(value);
+                  if (co != null) {
+                    status['coValue'] = co;
+                    if (kDebugMode) print('  → coValue: $co');
+                  }
+                  break;
+              }
             }
           }
         }
+        
+        if (kDebugMode) {
+          print('Final child status:');
+          status.forEach((key, value) {
+            print('  $key: $value');
+          });
+          print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        }
+        
+        return status;
       }
-      
+      return null;
+    } catch (e) {
       if (kDebugMode) {
-        print('Final child status:');
-        status.forEach((key, value) {
-          print('  $key: $value');
-        });
-        print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+        print('ERROR fetching child status from $childIpAddress: $e');
       }
-      
-      return status;
+      return null;
     }
-    return null;
-  } catch (e) {
-    if (kDebugMode) {
-      print('ERROR fetching child status from $childIpAddress: $e');
-    }
-    return null;
   }
-}
 
   // Turn device ON
   Future<bool> turnDeviceOn(String ipAddress) async {
