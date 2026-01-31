@@ -1,3 +1,67 @@
+import 'package:flutter/material.dart';
+
+enum DeviceType {
+  light,
+  fan,
+  waterPump,
+  gasSensor,
+  sensorOnly,
+  custom,
+}
+
+extension DeviceTypeExtension on DeviceType {
+  String get displayName {
+    switch (this) {
+      case DeviceType.light:
+        return 'Light';
+      case DeviceType.fan:
+        return 'Fan';
+      case DeviceType.waterPump:
+        return 'Water Pump';
+      case DeviceType.gasSensor:
+        return 'Gas Sensor';
+      case DeviceType.sensorOnly:
+        return 'Sensor Only';
+      case DeviceType.custom:
+        return 'Custom';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case DeviceType.light:
+        return Icons.lightbulb_outline;
+      case DeviceType.fan:
+        return Icons.air;
+      case DeviceType.waterPump:
+        return Icons.water_drop_outlined;
+      case DeviceType.gasSensor:
+        return Icons.sensors;
+      case DeviceType.sensorOnly:
+        return Icons.speed;
+      case DeviceType.custom:
+        return Icons.settings_input_component;
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case DeviceType.light:
+        return const Color(0xFFFFEB3B);
+      case DeviceType.fan:
+        return const Color(0xFF00BCD4);
+      case DeviceType.waterPump:
+        return const Color(0xFF2196F3);
+      case DeviceType.gasSensor:
+        return const Color(0xFFFF9800);
+      case DeviceType.sensorOnly:
+        return const Color(0xFF9C27B0);
+      case DeviceType.custom:
+        return const Color(0xFF607D8B);
+    }
+  }
+}
+
 class Device {
   final String id;
   String name;
@@ -8,15 +72,15 @@ class Device {
   String? roomId;
   bool isParent;
   String? parentId;
-  String? childIp;              // NEW: IP of child device for status monitoring
+  String? childIp;              // NEW
   String? staticIP;
   bool isOn;
   bool physicalSwitchOn;
   bool isOnline;
   int? batteryLevel;
   bool hasBattery;
-  int? childBatteryLevel;       // NEW: Battery level from child device
-  bool hasChildBattery;         // NEW: Whether to monitor child's battery
+  int? childBatteryLevel;       // NEW
+  bool hasChildBattery;         // NEW
   int brightness;
   int fanSpeed;
   int waterLevel;
