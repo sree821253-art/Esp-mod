@@ -63,6 +63,11 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           ],
         ),
         body: SafeArea(
+          child: Column(  // <-- Add this Column wrapper
+      children: [
+        // Add execution status banner
+        const ExecutionStatusBanner(),
+        Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
