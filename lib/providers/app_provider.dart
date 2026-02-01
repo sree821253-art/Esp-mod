@@ -583,7 +583,7 @@ Future<void> syncDevices({bool silent = false}) async {
     notifyListeners();
   }
 
-  // Toggle Device - REAL HTTP COMMUNICATION
+ // Toggle Device - REAL HTTP COMMUNICATION with execution status
   Future<bool> toggleDevice(String id) async {
     final index = _devices.indexWhere((d) => d.id == id);
     if (index == -1) return false;
@@ -601,10 +601,26 @@ Future<void> syncDevices({bool silent = false}) async {
     
     final newState = !device.isOn;
 
+    // SPECIAL HANDLING FOR WATER PUMP - Show countdown
+    if (device.type == DeviceType.waterPump && newState == true) {
+      for (int i = 5; i > 0; i--) {
+        _setExecutionStatus('⏱️ Verifying command ($i seconds)...');
+        notifyListeners();
+        await Future.delayed(const Duration(seconds: 1));
+      }
+      
+      _setExecutionStatus('🔄 Sending ON command to motor...');
+      notifyListeners();
+    }
+
     bool success;
     if (newState) {
       success = await _espService.turnDeviceOn(device.ipAddress);
     } else {
+      if (device.type == DeviceType.waterPump) {
+        _setExecutionStatus('🛑 Sending OFF pulse (10 sec)...');
+        notifyListeners();
+      }
       success = await _espService.turnDeviceOff(device.ipAddress);
     }
 
@@ -620,6 +636,13 @@ Future<void> syncDevices({bool silent = false}) async {
         type: newState ? LogType.deviceOn : LogType.deviceOff,
         action: newState ? 'Turned ON' : 'Turned OFF',
       );
+      
+      // Clear execution status after success
+      if (device.type == DeviceType.waterPump) {
+        await Future.delayed(const Duration(seconds: 2));
+        _setExecutionStatus('');
+      }
+      
       _saveToStorage();
       notifyListeners();
       return true;
@@ -634,6 +657,7 @@ Future<void> syncDevices({bool silent = false}) async {
         type: LogType.error,
         action: 'Command failed - Device offline',
       );
+      _setExecutionStatus('');
       notifyListeners();
       return false;
     }
