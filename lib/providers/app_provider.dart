@@ -53,6 +53,7 @@ class AppProvider extends ChangeNotifier {
   double get syncProgress => _syncProgress;
   AppMode get appMode => _appMode;
   String get appName => _appName;
+  String get executionStatus => _executionStatus;
   int get pumpMinThreshold => _pumpMinThreshold;
   int get pumpMaxThreshold => _pumpMaxThreshold;
 
