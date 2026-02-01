@@ -30,6 +30,7 @@ class AppProvider extends ChangeNotifier {
   double _syncProgress = 0;
   AppMode _appMode = AppMode.remote;
   String _appName = 'Home Circuit';
+  String _executionStatus = '';
   int _pumpMinThreshold = 20;
   int _pumpMaxThreshold = 80;
 
