@@ -257,6 +257,9 @@ GestureDetector(  // ADD THIS ENTIRE SECTION
               ),
             ),
           ),
+          SliverToBoxAdapter(
+          child: const ExecutionStatusBanner(),
+        ),
 
           // Optional: Small sync indicator (not intrusive)
 if (provider.isSyncing)
