@@ -102,6 +102,10 @@ class AppProvider extends ChangeNotifier {
     _saveToStorage();
     notifyListeners();
   }
+  void _setExecutionStatus(String status) {
+    _executionStatus = status;
+    notifyListeners();
+  }
 
   // App Name
   void setAppName(String name) {
