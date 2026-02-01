@@ -410,44 +410,96 @@ Future<void> syncDevices({bool silent = false}) async {
       onlineCount++;
       
       // Auto-control for water pump (existing code...)
+      // Auto-control for water pump with THRESHOLD CONFIRMATION DELAY
       if (device.type == DeviceType.waterPump && _appMode == AppMode.remote) {
         final waterLevel = updates['waterLevel'] ?? device.waterLevel;
         
-        if (waterLevel <= _pumpMinThreshold && !device.isOn) {
-          await _espService.turnDeviceOn(device.ipAddress);
-          _devices[i] = _devices[i].copyWith(isOn: true);
-          _addLog(
-            deviceId: device.id,
-            deviceName: device.name,
-            type: LogType.deviceOn,
-            action: 'Auto ON - Below minimum threshold',
-            details: 'Water level: $waterLevel%',
-          );
-        }
-        else if (waterLevel >= _pumpMaxThreshold && device.isOn) {
-          await _espService.turnDeviceOff(device.ipAddress);
-          _devices[i] = _devices[i].copyWith(isOn: false);
-          _addLog(
-            deviceId: device.id,
-            deviceName: device.name,
-            type: LogType.deviceOff,
-            action: 'Auto OFF - Above maximum threshold',
-            details: 'Water level: $waterLevel%',
-          );
-        }
-        else if (waterLevel >= emergencyStopLevel && device.isOn) {
-          await _espService.turnDeviceOff(device.ipAddress);
-          _devices[i] = _devices[i].copyWith(isOn: false);
-          _addLog(
-            deviceId: device.id,
-            deviceName: device.name,
-            type: LogType.warning,
-            action: 'EMERGENCY STOP',
-            details: 'Water level reached $waterLevel%',
-          );
+        // Check if we should act
+        bool shouldTurnOn = waterLevel <= _pumpMinThreshold && !device.isOn;
+        bool shouldTurnOff = waterLevel >= _pumpMaxThreshold && device.isOn;
+        bool emergencyStop = waterLevel >= emergencyStopLevel && device.isOn;
+        
+        if (shouldTurnOn || shouldTurnOff || emergencyStop) {
+          // 2-SECOND CONFIRMATION DELAY
+          if (kDebugMode) {
+            print('⏱️  Threshold hit detected, waiting 2 seconds for confirmation...');
+          }
+          
+          _setExecutionStatus('⏱️ Confirming threshold (2 seconds)...');
+          notifyListeners();
+          await Future.delayed(const Duration(seconds: 2));
+          
+          // Re-check the water level after delay
+          final confirmStatus = await _espService.getDeviceStatus(device.ipAddress);
+          if (confirmStatus != null && confirmStatus['waterLevel'] != null) {
+            final confirmedLevel = confirmStatus['waterLevel'];
+            
+            if (kDebugMode) {
+              print('✓ Confirmed water level: $confirmedLevel%');
+            }
+            
+            // Re-evaluate with confirmed level
+            if (confirmedLevel <= _pumpMinThreshold && !device.isOn) {
+              for (int i = 5; i > 0; i--) {
+                _setExecutionStatus('🤖 Auto-start: Verifying ($i sec)...');
+                notifyListeners();
+                await Future.delayed(const Duration(seconds: 1));
+              }
+              
+              _setExecutionStatus('🤖 Auto-start: Turning ON motor...');
+              notifyListeners();
+              
+              await _espService.turnDeviceOn(device.ipAddress);
+              _devices[i] = _devices[i].copyWith(isOn: true);
+              _addLog(
+                deviceId: device.id,
+                deviceName: device.name,
+                type: LogType.deviceOn,
+                action: 'Auto ON - Below minimum threshold (confirmed)',
+                details: 'Water level: $confirmedLevel%',
+              );
+              
+              await Future.delayed(const Duration(seconds: 2));
+              _setExecutionStatus('');
+            }
+            else if (confirmedLevel >= _pumpMaxThreshold && device.isOn) {
+              _setExecutionStatus('🤖 Auto-stop: Sending OFF pulse...');
+              notifyListeners();
+              
+              await _espService.turnDeviceOff(device.ipAddress);
+              _devices[i] = _devices[i].copyWith(isOn: false);
+              _addLog(
+                deviceId: device.id,
+                deviceName: device.name,
+                type: LogType.deviceOff,
+                action: 'Auto OFF - Above maximum threshold (confirmed)',
+                details: 'Water level: $confirmedLevel%',
+              );
+              
+              await Future.delayed(const Duration(seconds: 2));
+              _setExecutionStatus('');
+            }
+            else if (confirmedLevel >= emergencyStopLevel && device.isOn) {
+              _setExecutionStatus('🚨 EMERGENCY STOP: Stopping motor...');
+              notifyListeners();
+              
+              await _espService.turnDeviceOff(device.ipAddress);
+              _devices[i] = _devices[i].copyWith(isOn: false);
+              _addLog(
+                deviceId: device.id,
+                deviceName: device.name,
+                type: LogType.warning,
+                action: 'EMERGENCY STOP (confirmed)',
+                details: 'Water level reached $confirmedLevel%',
+              );
+              
+              await Future.delayed(const Duration(seconds: 2));
+              _setExecutionStatus('');
+            }
+          }
         }
       }
-    } else {
+     else {
       if (kDebugMode) {
         print('✗ No status received from ${device.name} - marking offline');
       }
