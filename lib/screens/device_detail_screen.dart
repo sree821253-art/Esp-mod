@@ -63,280 +63,280 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
           ],
         ),
         body: SafeArea(
-          child: Column(  // <-- Add this Column wrapper
-      children: [
-        // Add execution status banner
-        const ExecutionStatusBanner(),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Device header card
-                GlassCard(
-                  padding: const EdgeInsets.all(24),
-                  glowEffect: device.isOn,
+          child: Column(
+            children: [
+              // Add execution status banner
+              const ExecutionStatusBanner(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Power toggle
-                      DevicePowerToggle(
-                        isOn: device.isOn,
-                        isOnline: device.isOnline,
-                        isLoading: _isToggling,
-                        activeColor: device.type.color,
-                        onToggle: (isRemoteMode &&
-                                device.type != DeviceType.gasSensor &&
-                                device.type != DeviceType.sensorOnly)
-                            ? () async {
-                                setState(() => _isToggling = true);
-                                await provider.toggleDevice(device.id);
-                                if (mounted) {
-                                  setState(() => _isToggling = false);
-                                }
-                              }
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-                      // Device type
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: device.type.color.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                      // Device header card
+                      GlassCard(
+                        padding: const EdgeInsets.all(24),
+                        glowEffect: device.isOn,
+                        child: Column(
                           children: [
-                            Icon(
-                              device.type.icon,
-                              color: device.type.color,
-                              size: 18,
+                            // Power toggle
+                            DevicePowerToggle(
+                              isOn: device.isOn,
+                              isOnline: device.isOnline,
+                              isLoading: _isToggling,
+                              activeColor: device.type.color,
+                              onToggle: (isRemoteMode &&
+                                      device.type != DeviceType.gasSensor &&
+                                      device.type != DeviceType.sensorOnly)
+                                  ? () async {
+                                      setState(() => _isToggling = true);
+                                      await provider.toggleDevice(device.id);
+                                      if (mounted) {
+                                        setState(() => _isToggling = false);
+                                      }
+                                    }
+                                  : null,
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(height: 16),
+                            // Device type
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: device.type.color.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    device.type.icon,
+                                    color: device.type.color,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    device.type.displayName,
+                                    style: TextStyle(
+                                      color: device.type.color,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            // Status text
                             Text(
-                              device.type.displayName,
+                              device.isOn ? 'ON' : 'OFF',
                               style: TextStyle(
-                                color: device.type.color,
-                                fontWeight: FontWeight.w500,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: device.isOn
+                                    ? device.type.color
+                                    : Colors.grey,
+                                shadows: isDark && device.isOn
+                                    ? [
+                                        Shadow(
+                                          color: device.type.color.withValues(alpha: 0.5),
+                                          blurRadius: 10,
+                                        ),
+                                      ]
+                                    : null,
                               ),
                             ),
                           ],
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // Status text
-                      Text(
-                        device.isOn ? 'ON' : 'OFF',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: device.isOn
-                              ? device.type.color
-                              : Colors.grey,
-                          shadows: isDark && device.isOn
-                              ? [
-                                  Shadow(
-                                    color: device.type.color.withValues(alpha: 0.5),
-                                    blurRadius: 10,
-                                  ),
-                                ]
-                              : null,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
 
-                // Device info card
-                GlassCard(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Device Information',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _InfoRow(
-                        icon: Icons.wifi,
-                        label: 'IP Address',
-                        value: device.ipAddress,
-                        color: isDark ? AppTheme.neonCyan : Colors.blue,
-                      ),
-                      if (device.gpioPin != null)
-                        _InfoRow(
-                          icon: Icons.memory,
-                          label: 'GPIO Pin',
-                          value: '${device.gpioPin}',
-                          color: AppTheme.neonAmber,
-                        ),
-                      _InfoRow(
-                        icon: device.isOnline
-                            ? Icons.check_circle
-                            : Icons.error,
-                        label: 'Status',
-                        value: device.isOnline ? 'Online' : 'Offline',
-                        color: device.isOnline
-                            ? AppTheme.neonGreen
-                            : AppTheme.neonRed,
-                      ),
-                      if (device.statusGpioPin != null)
-  _InfoRow(
-    icon: device.physicalSwitchOn
-        ? Icons.toggle_on
-        : Icons.toggle_off,
-    label: 'Physical Switch',
-    value: device.physicalSwitchOn ? 'ON' : 'OFF',
-    color: device.physicalSwitchOn
-        ? AppTheme.neonGreen
-        : Colors.grey,
-  ),
-                      if (device.hasBattery && device.batteryLevel != null)
-                        _InfoRow(
-                          icon: device.batteryLevel! > 20
-                              ? Icons.battery_std
-                              : Icons.battery_alert,
-                          label: 'Battery',
-                          value: '${device.batteryLevel}%',
-                          color: device.batteryLevel! > 20
-                              ? AppTheme.neonGreen
-                              : AppTheme.neonRed,
-                        ),
-                      // In the Device Information section, add after the battery level:
-
-if (device.hasChildBattery && device.childBatteryLevel != null)
-  _InfoRow(
-    icon: device.childBatteryLevel! > 20
-        ? Icons.battery_charging_full
-        : Icons.battery_alert,
-    label: 'Child Battery',
-    value: '${device.childBatteryLevel}%',
-    color: device.childBatteryLevel! > 20
-        ? AppTheme.neonGreen
-        : AppTheme.neonRed,
-  ),
-if (device.hasChildBattery && device.childIp != null)
-  _InfoRow(
-    icon: Icons.link,
-    label: 'Child IP',
-    value: device.childIp!,
-    color: isDark ? AppTheme.neonCyan : Colors.blue,
-  ),
-                      _InfoRow(
-                        icon: Icons.access_time,
-                        label: 'Last Seen',
-                        value: _formatLastSeen(device.lastSeen),
-                        color: isDark ? Colors.white54 : Colors.black54,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Device-specific controls
-                if (device.isOnline) ...[
-                  GlassCard(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Controls',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildDeviceControls(context, device, provider),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
-
-                // Mode indicator
-                // Mode indicator
-if (!isRemoteMode)
-  GlassCard(
-    padding: const EdgeInsets.all(16),
-    child: Row(
-      children: [
-        Icon(
-          Icons.info_outline,
-          color: AppTheme.neonAmber,
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'Local Auto mode - Manual override enabled', // CHANGED MESSAGE
-                            style: TextStyle(
-                              color: isDark ? Colors.white70 : Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                // Notifications toggle
-                const SizedBox(height: 16),
-                GlassCard(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Icon(
-                        device.notificationsEnabled
-                            ? Icons.notifications_active
-                            : Icons.notifications_off,
-                        color: device.notificationsEnabled
-                            ? AppTheme.neonCyan
-                            : Colors.grey,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
+                      // Device info card
+                      GlassCard(
+                        padding: const EdgeInsets.all(16),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Notifications',
+                              'Device Information',
                               style: TextStyle(
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
                                 color: isDark ? Colors.white : Colors.black87,
                               ),
                             ),
-                            Text(
-                              'Receive alerts for this device',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDark ? Colors.white54 : Colors.black54,
+                            const SizedBox(height: 16),
+                            _InfoRow(
+                              icon: Icons.wifi,
+                              label: 'IP Address',
+                              value: device.ipAddress,
+                              color: isDark ? AppTheme.neonCyan : Colors.blue,
+                            ),
+                            if (device.gpioPin != null)
+                              _InfoRow(
+                                icon: Icons.memory,
+                                label: 'GPIO Pin',
+                                value: '${device.gpioPin}',
+                                color: AppTheme.neonAmber,
                               ),
+                            _InfoRow(
+                              icon: device.isOnline
+                                  ? Icons.check_circle
+                                  : Icons.error,
+                              label: 'Status',
+                              value: device.isOnline ? 'Online' : 'Offline',
+                              color: device.isOnline
+                                  ? AppTheme.neonGreen
+                                  : AppTheme.neonRed,
+                            ),
+                            if (device.statusGpioPin != null)
+                              _InfoRow(
+                                icon: device.physicalSwitchOn
+                                    ? Icons.toggle_on
+                                    : Icons.toggle_off,
+                                label: 'Physical Switch',
+                                value: device.physicalSwitchOn ? 'ON' : 'OFF',
+                                color: device.physicalSwitchOn
+                                    ? AppTheme.neonGreen
+                                    : Colors.grey,
+                              ),
+                            if (device.hasBattery && device.batteryLevel != null)
+                              _InfoRow(
+                                icon: device.batteryLevel! > 20
+                                    ? Icons.battery_std
+                                    : Icons.battery_alert,
+                                label: 'Battery',
+                                value: '${device.batteryLevel}%',
+                                color: device.batteryLevel! > 20
+                                    ? AppTheme.neonGreen
+                                    : AppTheme.neonRed,
+                              ),
+                            if (device.hasChildBattery && device.childBatteryLevel != null)
+                              _InfoRow(
+                                icon: device.childBatteryLevel! > 20
+                                    ? Icons.battery_charging_full
+                                    : Icons.battery_alert,
+                                label: 'Child Battery',
+                                value: '${device.childBatteryLevel}%',
+                                color: device.childBatteryLevel! > 20
+                                    ? AppTheme.neonGreen
+                                    : AppTheme.neonRed,
+                              ),
+                            if (device.hasChildBattery && device.childIp != null)
+                              _InfoRow(
+                                icon: Icons.link,
+                                label: 'Child IP',
+                                value: device.childIp!,
+                                color: isDark ? AppTheme.neonCyan : Colors.blue,
+                              ),
+                            _InfoRow(
+                              icon: Icons.access_time,
+                              label: 'Last Seen',
+                              value: _formatLastSeen(device.lastSeen),
+                              color: isDark ? Colors.white54 : Colors.black54,
                             ),
                           ],
                         ),
                       ),
-                      Switch(
-                        value: device.notificationsEnabled,
-                        onChanged: (value) {
-                          provider.setDeviceNotifications(device.id, value);
-                        },
+                      const SizedBox(height: 16),
+
+                      // Device-specific controls
+                      if (device.isOnline) ...[
+                        GlassCard(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Controls',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              _buildDeviceControls(context, device, provider),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Mode indicator
+                      if (!isRemoteMode)
+                        GlassCard(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.info_outline,
+                                color: AppTheme.neonAmber,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'Local Auto mode - Manual override enabled',
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white70 : Colors.black87,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // Notifications toggle
+                      const SizedBox(height: 16),
+                      GlassCard(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Icon(
+                              device.notificationsEnabled
+                                  ? Icons.notifications_active
+                                  : Icons.notifications_off,
+                              color: device.notificationsEnabled
+                                  ? AppTheme.neonCyan
+                                  : Colors.grey,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Notifications',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Receive alerts for this device',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark ? Colors.white54 : Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Switch(
+                              value: device.notificationsEnabled,
+                              onChanged: (value) {
+                                provider.setDeviceNotifications(device.id, value);
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -426,144 +426,144 @@ if (!isRemoteMode)
   }
 
   void _showEditDialog(BuildContext context, Device device) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-  final nameController = TextEditingController(text: device.name);
-  final ipController = TextEditingController(text: device.ipAddress);
-  final gpioController = TextEditingController(text: device.gpioPin?.toString() ?? '');
-  final statusGpioController = TextEditingController(text: device.statusGpioPin?.toString() ?? '');
-  final childIpController = TextEditingController(text: device.childIp ?? '');  // NEW
-  bool hasChildBattery = device.hasChildBattery;  // NEW
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final nameController = TextEditingController(text: device.name);
+    final ipController = TextEditingController(text: device.ipAddress);
+    final gpioController = TextEditingController(text: device.gpioPin?.toString() ?? '');
+    final statusGpioController = TextEditingController(text: device.statusGpioPin?.toString() ?? '');
+    final childIpController = TextEditingController(text: device.childIp ?? '');
+    bool hasChildBattery = device.hasChildBattery;
 
-  showDialog(
-    context: context,
-    builder: (context) => StatefulBuilder(  // Changed to StatefulBuilder
-      builder: (context, setState) => AlertDialog(
-        backgroundColor: isDark ? AppTheme.circuitDarkAlt : Colors.white,
-        title: Row(
-          children: [
-            Icon(
-              Icons.edit,
-              color: isDark ? AppTheme.neonCyan : Theme.of(context).primaryColor,
-            ),
-            const SizedBox(width: 8),
-            const Text('Edit Device'),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: isDark ? AppTheme.circuitDarkAlt : Colors.white,
+          title: Row(
             children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Device Name',
-                  prefixIcon: Icon(Icons.label_outline),
-                ),
+              Icon(
+                Icons.edit,
+                color: isDark ? AppTheme.neonCyan : Theme.of(context).primaryColor,
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: ipController,
-                decoration: const InputDecoration(
-                  labelText: 'IP Address',
-                  prefixIcon: Icon(Icons.wifi),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: gpioController,
-                decoration: const InputDecoration(
-                  labelText: 'GPIO Pin',
-                  prefixIcon: Icon(Icons.memory),
-                  hintText: 'e.g., 2',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: statusGpioController,
-                decoration: const InputDecoration(
-                  labelText: 'Status GPIO Pin',
-                  prefixIcon: Icon(Icons.sensors),
-                  hintText: 'e.g., 4',
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              // NEW: Child Battery Toggle
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Monitor Child Battery',
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                    ),
+              const SizedBox(width: 8),
+              const Text('Edit Device'),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Device Name',
+                    prefixIcon: Icon(Icons.label_outline),
                   ),
-                  Switch(
-                    value: hasChildBattery,
-                    onChanged: (value) {
-                      setState(() => hasChildBattery = value);
-                    },
-                  ),
-                ],
-              ),
-              if (hasChildBattery) ...[
+                ),
                 const SizedBox(height: 16),
                 TextField(
-                  controller: childIpController,
+                  controller: ipController,
                   decoration: const InputDecoration(
-                    labelText: 'Child Device IP',
-                    prefixIcon: Icon(Icons.link),
-                    hintText: 'e.g., 192.168.1.105',
+                    labelText: 'IP Address',
+                    prefixIcon: Icon(Icons.wifi),
                   ),
                   keyboardType: TextInputType.number,
                 ),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (nameController.text.trim().isEmpty ||
-                  ipController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Please fill required fields')),
-                );
-                return;
-              }
-
-              final provider = context.read<AppProvider>();
-              provider.updateDevice(device.copyWith(
-                name: nameController.text.trim(),
-                ipAddress: ipController.text.trim(),
-                gpioPin: int.tryParse(gpioController.text),
-                statusGpioPin: int.tryParse(statusGpioController.text),
-                hasChildBattery: hasChildBattery,                          // NEW
-                childIp: hasChildBattery ? childIpController.text.trim() : null,  // NEW
-              ));
-
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Device updated'),
-                  backgroundColor: Colors.green,
+                const SizedBox(height: 16),
+                TextField(
+                  controller: gpioController,
+                  decoration: const InputDecoration(
+                    labelText: 'GPIO Pin',
+                    prefixIcon: Icon(Icons.memory),
+                    hintText: 'e.g., 2',
+                  ),
+                  keyboardType: TextInputType.number,
                 ),
-              );
-            },
-            child: const Text('Save'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: statusGpioController,
+                  decoration: const InputDecoration(
+                    labelText: 'Status GPIO Pin',
+                    prefixIcon: Icon(Icons.sensors),
+                    hintText: 'e.g., 4',
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                // Child Battery Toggle
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Monitor Child Battery',
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ),
+                    Switch(
+                      value: hasChildBattery,
+                      onChanged: (value) {
+                        setState(() => hasChildBattery = value);
+                      },
+                    ),
+                  ],
+                ),
+                if (hasChildBattery) ...[
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: childIpController,
+                    decoration: const InputDecoration(
+                      labelText: 'Child Device IP',
+                      prefixIcon: Icon(Icons.link),
+                      hintText: 'e.g., 192.168.1.105',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
+              ],
+            ),
           ),
-        ],
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (nameController.text.trim().isEmpty ||
+                    ipController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Please fill required fields')),
+                  );
+                  return;
+                }
+
+                final provider = context.read<AppProvider>();
+                provider.updateDevice(device.copyWith(
+                  name: nameController.text.trim(),
+                  ipAddress: ipController.text.trim(),
+                  gpioPin: int.tryParse(gpioController.text),
+                  statusGpioPin: int.tryParse(statusGpioController.text),
+                  hasChildBattery: hasChildBattery,
+                  childIp: hasChildBattery ? childIpController.text.trim() : null,
+                ));
+
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Device updated'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _showDeleteDialog(BuildContext context, Device device) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
