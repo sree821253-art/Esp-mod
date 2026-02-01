@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../widgets/circuit_background.dart';
 import '../widgets/device_controls.dart';
 import '../models/device.dart';
+import '../widgets/execution_status_widget.dart';
 
 class DeviceDetailScreen extends StatefulWidget {
   final Device device;
