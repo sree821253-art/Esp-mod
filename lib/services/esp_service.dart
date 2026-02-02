@@ -294,19 +294,21 @@ class EspService {
   }
 
   // Toggle device state
-  Future<bool> toggleDevice(String ipAddress, bool currentState) async {
+  // Toggle device state
+  Future<bool> toggleDevice(String ipAddress, String deviceName, bool currentState) async {
     if (currentState) {
-      return turnDeviceOff(ipAddress);
+      return turnDeviceOff(ipAddress, deviceName);
     } else {
-      return turnDeviceOn(ipAddress);
+      return turnDeviceOn(ipAddress, deviceName);
     }
   }
 
   // Set brightness for lights (if your ESP supports PWM)
-  Future<bool> setBrightness(String ipAddress, int brightness) async {
+  // Set brightness for lights (if your ESP supports PWM)
+  Future<bool> setBrightness(String ipAddress, String deviceName, int brightness) async {
     try {
       final response = await http
-          .get(Uri.parse('http://$ipAddress/brightness/$brightness'))
+          .get(Uri.parse('http://$ipAddress/$deviceName/brightness/$brightness'))
           .timeout(_timeout);
       
       return response.statusCode == 200;
