@@ -542,6 +542,7 @@ Future<void> syncDevices({bool silent = false}) async {
   }
 
 // Toggle Device - WITH DYNAMIC PHYSICAL SWITCH POLLING
+// Toggle Device - WITH MOTOR STATE MACHINE
 Future<bool> toggleDevice(String id) async {
   final index = _devices.indexWhere((d) => d.id == id);
   if (index == -1) return false;
@@ -557,24 +558,185 @@ Future<bool> toggleDevice(String id) async {
     );
   }
   
-  final newState = !device.isOn;
+  // Handle motor vs regular device
+  if (device.type == DeviceType.waterPump) {
+    return await _toggleMotor(device, index);
+  } else {
+    return await _toggleStandardDevice(device, index);
+  }
+}
 
-  // Send command
+// NEW METHOD - Motor toggle with state machine
+Future<bool> _toggleMotor(Device device, int index) async {
+  final newState = !device.isOn;
+  final startTime = DateTime.now();
+  
+  if (newState) {
+    // ═══════════ ON SEQUENCE ═══════════
+    _setExecutionStatus('🔄 Sending ON pulse...');
+    notifyListeners();
+    
+    final commandSent = await _espService.turnDeviceOn(device.ipAddress, device.name);
+    if (!commandSent) {
+      _addLog(
+        deviceId: device.id,
+        deviceName: device.name,
+        type: LogType.error,
+        action: 'ON command failed - Network error',
+      );
+      _setExecutionStatus('❌ Command failed');
+      notifyListeners();
+      await Future.delayed(const Duration(seconds: 2));
+      _setExecutionStatus('');
+      notifyListeners();
+      return false;
+    }
+    
+    // Wait 5 seconds for relay execution
+    await Future.delayed(const Duration(seconds: 5));
+    
+    _setExecutionStatus('⏳ Waiting for physical switch (10s timeout)...');
+    notifyListeners();
+    
+    // Poll for 10 seconds
+    for (int i = 0; i < 20; i++) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      final status = await _espService.getDeviceStatus(device.ipAddress, device.name);
+      
+      if (status != null && status['physicalSwitchOn'] == true) {
+        // SUCCESS
+        _devices[index] = device.copyWith(
+          isOn: true,
+          physicalSwitchOn: true,
+          isOnline: true,
+          lastSeen: DateTime.now(),
+        );
+        
+        _addLog(
+          deviceId: device.id,
+          deviceName: device.name,
+          type: LogType.deviceOn,
+          action: 'Motor ON confirmed',
+        );
+        
+        _setExecutionStatus('✅ Motor ON successful!');
+        notifyListeners();
+        await Future.delayed(const Duration(seconds: 1));
+        _setExecutionStatus('');
+        _saveToStorage();
+        notifyListeners();
+        return true;
+      }
+      
+      // Update countdown
+      final elapsed = DateTime.now().difference(startTime).inSeconds;
+      _setExecutionStatus('⏳ Confirming... (${elapsed}/15s)');
+      notifyListeners();
+    }
+    
+    // TIMEOUT
+    _addLog(
+      deviceId: device.id,
+      deviceName: device.name,
+      type: LogType.error,
+      action: 'ON timeout - Physical switch not responding',
+    );
+    _setExecutionStatus('❌ Timeout - Try again');
+    notifyListeners();
+    await Future.delayed(const Duration(seconds: 2));
+    _setExecutionStatus('');
+    notifyListeners();
+    return false;
+    
+  } else {
+    // ═══════════ OFF SEQUENCE ═══════════
+    _setExecutionStatus('🛑 Sending OFF pulse...');
+    notifyListeners();
+    
+    final commandSent = await _espService.turnDeviceOff(device.ipAddress, device.name);
+    if (!commandSent) {
+      _addLog(
+        deviceId: device.id,
+        deviceName: device.name,
+        type: LogType.error,
+        action: 'OFF command failed - Network error',
+      );
+      _setExecutionStatus('❌ Command failed');
+      notifyListeners();
+      await Future.delayed(const Duration(seconds: 2));
+      _setExecutionStatus('');
+      notifyListeners();
+      return false;
+    }
+    
+    _setExecutionStatus('⏳ Waiting for physical switch to go LOW...');
+    notifyListeners();
+    
+    // Poll until switch goes LOW (30 second safety timeout)
+    while (DateTime.now().difference(startTime).inSeconds < 30) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      final status = await _espService.getDeviceStatus(device.ipAddress, device.name);
+      
+      if (status != null && status['physicalSwitchOn'] == false) {
+        // SUCCESS
+        _devices[index] = device.copyWith(
+          isOn: false,
+          physicalSwitchOn: false,
+          isOnline: true,
+          lastSeen: DateTime.now(),
+        );
+        
+        _addLog(
+          deviceId: device.id,
+          deviceName: device.name,
+          type: LogType.deviceOff,
+          action: 'Motor OFF confirmed',
+        );
+        
+        _setExecutionStatus('✅ Motor OFF successful!');
+        notifyListeners();
+        await Future.delayed(const Duration(seconds: 1));
+        _setExecutionStatus('');
+        _saveToStorage();
+        notifyListeners();
+        return true;
+      }
+      
+      // Update status
+      final elapsed = DateTime.now().difference(startTime).inSeconds;
+      _setExecutionStatus('⏳ Waiting for switch LOW... (${elapsed}s)');
+      notifyListeners();
+    }
+    
+    // TIMEOUT (30 seconds)
+    _addLog(
+      deviceId: device.id,
+      deviceName: device.name,
+      type: LogType.error,
+      action: 'OFF timeout - Motor may still be running',
+    );
+    _setExecutionStatus('❌ Timeout - Check motor manually');
+    notifyListeners();
+    await Future.delayed(const Duration(seconds: 2));
+    _setExecutionStatus('');
+    notifyListeners();
+    return false;
+  }
+}
+
+// NEW METHOD - Standard device toggle
+Future<bool> _toggleStandardDevice(Device device, int index) async {
+  final newState = !device.isOn;
+  
   bool commandSent;
   if (newState) {
-    if (device.type == DeviceType.waterPump) {
-      _setExecutionStatus('🔄 Sending ON command...');
-      notifyListeners();
-    }
-    commandSent = await _espService.turnDeviceOn(device.ipAddress);
+    commandSent = await _espService.turnDeviceOn(device.ipAddress, device.name);
   } else {
-    if (device.type == DeviceType.waterPump) {
-      _setExecutionStatus('🛑 Sending OFF command...');
-      notifyListeners();
-    }
-    commandSent = await _espService.turnDeviceOff(device.ipAddress);
+    commandSent = await _espService.turnDeviceOff(device.ipAddress, device.name);
   }
-
+  
   if (!commandSent) {
     _addLog(
       deviceId: device.id,
@@ -582,96 +744,25 @@ Future<bool> toggleDevice(String id) async {
       type: LogType.error,
       action: 'Command failed - Network error',
     );
-    _setExecutionStatus('');
-    notifyListeners();
     return false;
   }
-
-  // For water pump: Poll physical switch status
-  if (device.type == DeviceType.waterPump) {
-    _setExecutionStatus('⏳ Waiting for confirmation...');
-    notifyListeners();
-
-    final startTime = DateTime.now();
-    const maxWaitTime = Duration(seconds: 10);
-    bool confirmed = false;
-
-    while (DateTime.now().difference(startTime) < maxWaitTime) {
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      // Check physical switch status
-      final status = await _espService.getDeviceStatus(device.ipAddress);
-      
-      if (status != null && status['physicalSwitchOn'] != null) {
-        final physicalSwitch = status['physicalSwitchOn'];
-        
-        if (physicalSwitch == newState) {
-          // SUCCESS - Physical switch matches desired state
-          confirmed = true;
-          _devices[index] = device.copyWith(
-            isOn: newState,
-            physicalSwitchOn: physicalSwitch,
-            isOnline: true,
-            lastSeen: DateTime.now(),
-          );
-          
-          _addLog(
-            deviceId: device.id,
-            deviceName: device.name,
-            type: newState ? LogType.deviceOn : LogType.deviceOff,
-            action: newState ? 'Turned ON (confirmed)' : 'Turned OFF (confirmed)',
-          );
-          
-          _setExecutionStatus('✅ Command successful!');
-          notifyListeners();
-          await Future.delayed(const Duration(seconds: 1));
-          _setExecutionStatus('');
-          _saveToStorage();
-          notifyListeners();
-          return true;
-        }
-      }
-      
-      // Update status message with elapsed time
-      final elapsed = DateTime.now().difference(startTime).inSeconds;
-      _setExecutionStatus('⏳ Confirming... ($elapsed/10s)');
-      notifyListeners();
-    }
-
-    // TIMEOUT - Physical switch didn't change within 10 seconds
-    if (!confirmed) {
-      _addLog(
-        deviceId: device.id,
-        deviceName: device.name,
-        type: LogType.error,
-        action: 'Command timeout - Physical switch not responding',
-      );
-      _setExecutionStatus('❌ Timeout - Try again');
-      notifyListeners();
-      await Future.delayed(const Duration(seconds: 2));
-      _setExecutionStatus('');
-      notifyListeners();
-      return false;
-    }
-  } else {
-    // For non-pump devices: Standard toggle
-    _devices[index] = device.copyWith(
-      isOn: newState,
-      isOnline: true,
-      lastSeen: DateTime.now(),
-    );
-    _addLog(
-      deviceId: device.id,
-      deviceName: device.name,
-      type: newState ? LogType.deviceOn : LogType.deviceOff,
-      action: newState ? 'Turned ON' : 'Turned OFF',
-    );
-    _saveToStorage();
-    notifyListeners();
-    return true;
-  }
-
-  return false;
+  
+  _devices[index] = device.copyWith(
+    isOn: newState,
+    isOnline: true,
+    lastSeen: DateTime.now(),
+  );
+  
+  _addLog(
+    deviceId: device.id,
+    deviceName: device.name,
+    type: newState ? LogType.deviceOn : LogType.deviceOff,
+    action: newState ? 'Turned ON' : 'Turned OFF',
+  );
+  
+  _saveToStorage();
+  notifyListeners();
+  return true;
 }
 
   // Set Brightness - REAL HTTP COMMUNICATION
