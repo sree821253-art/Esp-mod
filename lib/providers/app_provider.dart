@@ -542,6 +542,7 @@ Future<void> syncDevices({bool silent = false}) async {
   }
 
 // Toggle Device - WITH DYNAMIC PHYSICAL SWITCH POLLING
+// Toggle Device - WITH DYNAMIC PHYSICAL SWITCH POLLING
 Future<bool> toggleDevice(String id) async {
   final index = _devices.indexWhere((d) => d.id == id);
   if (index == -1) return false;
@@ -560,18 +561,13 @@ Future<bool> toggleDevice(String id) async {
   final newState = !device.isOn;
 
   // Send command
+  _setExecutionStatus('🔄 Sending ${newState ? 'ON' : 'OFF'} command...');
+  notifyListeners();
+
   bool commandSent;
   if (newState) {
-    if (device.type == DeviceType.waterPump) {
-      _setExecutionStatus('🔄 Sending ON command...');
-      notifyListeners();
-    }
     commandSent = await _espService.turnDeviceOn(device.ipAddress);
   } else {
-    if (device.type == DeviceType.waterPump) {
-      _setExecutionStatus('🛑 Sending OFF command...');
-      notifyListeners();
-    }
     commandSent = await _espService.turnDeviceOff(device.ipAddress);
   }
 
@@ -587,88 +583,70 @@ Future<bool> toggleDevice(String id) async {
     return false;
   }
 
-  // For water pump: Poll physical switch status
-  if (device.type == DeviceType.waterPump) {
-    _setExecutionStatus('⏳ Waiting for confirmation...');
-    notifyListeners();
+  // Poll physical switch status for confirmation
+  _setExecutionStatus('⏳ Waiting for confirmation...');
+  notifyListeners();
 
-    final startTime = DateTime.now();
-    const maxWaitTime = Duration(seconds: 10);
-    bool confirmed = false;
+  final startTime = DateTime.now();
+  const maxWaitTime = Duration(seconds: 10);
+  bool confirmed = false;
 
-    while (DateTime.now().difference(startTime) < maxWaitTime) {
-      await Future.delayed(const Duration(milliseconds: 500));
+  while (DateTime.now().difference(startTime) < maxWaitTime) {
+    await Future.delayed(const Duration(milliseconds: 500));
 
-      // Check physical switch status
-      final status = await _espService.getDeviceStatus(device.ipAddress);
+    // Check physical switch status
+    final status = await _espService.getDeviceStatus(device.ipAddress);
+    
+    if (status != null && status['physicalSwitchOn'] != null) {
+      final physicalSwitch = status['physicalSwitchOn'];
       
-      if (status != null && status['physicalSwitchOn'] != null) {
-        final physicalSwitch = status['physicalSwitchOn'];
+      if (physicalSwitch == newState) {
+        // SUCCESS - Physical switch matches desired state
+        confirmed = true;
+        _devices[index] = device.copyWith(
+          isOn: newState,
+          physicalSwitchOn: physicalSwitch,
+          isOnline: true,
+          lastSeen: DateTime.now(),
+        );
         
-        if (physicalSwitch == newState) {
-          // SUCCESS - Physical switch matches desired state
-          confirmed = true;
-          _devices[index] = device.copyWith(
-            isOn: newState,
-            physicalSwitchOn: physicalSwitch,
-            isOnline: true,
-            lastSeen: DateTime.now(),
-          );
-          
-          _addLog(
-            deviceId: device.id,
-            deviceName: device.name,
-            type: newState ? LogType.deviceOn : LogType.deviceOff,
-            action: newState ? 'Turned ON (confirmed)' : 'Turned OFF (confirmed)',
-          );
-          
-          _setExecutionStatus('✅ Command successful!');
-          notifyListeners();
-          await Future.delayed(const Duration(seconds: 1));
-          _setExecutionStatus('');
-          _saveToStorage();
-          notifyListeners();
-          return true;
-        }
+        _addLog(
+          deviceId: device.id,
+          deviceName: device.name,
+          type: newState ? LogType.deviceOn : LogType.deviceOff,
+          action: newState ? 'Turned ON (confirmed)' : 'Turned OFF (confirmed)',
+        );
+        
+        _setExecutionStatus('✅ Command successful!');
+        notifyListeners();
+        await Future.delayed(const Duration(seconds: 1));
+        _setExecutionStatus('');
+        _saveToStorage();
+        notifyListeners();
+        return true;
       }
-      
-      // Update status message with elapsed time
-      final elapsed = DateTime.now().difference(startTime).inSeconds;
-      _setExecutionStatus('⏳ Confirming... ($elapsed/10s)');
-      notifyListeners();
     }
+    
+    // Update status message with elapsed time
+    final elapsed = DateTime.now().difference(startTime).inSeconds;
+    _setExecutionStatus('⏳ Confirming... ($elapsed/10s)');
+    notifyListeners();
+  }
 
-    // TIMEOUT - Physical switch didn't change within 10 seconds
-    if (!confirmed) {
-      _addLog(
-        deviceId: device.id,
-        deviceName: device.name,
-        type: LogType.error,
-        action: 'Command timeout - Physical switch not responding',
-      );
-      _setExecutionStatus('❌ Timeout - Try again');
-      notifyListeners();
-      await Future.delayed(const Duration(seconds: 2));
-      _setExecutionStatus('');
-      notifyListeners();
-      return false;
-    }
-  } else {
-    // For non-pump devices: Standard toggle
-    _devices[index] = device.copyWith(
-      isOn: newState,
-      isOnline: true,
-      lastSeen: DateTime.now(),
-    );
+  // TIMEOUT - Physical switch didn't change within 10 seconds
+  if (!confirmed) {
     _addLog(
       deviceId: device.id,
       deviceName: device.name,
-      type: newState ? LogType.deviceOn : LogType.deviceOff,
-      action: newState ? 'Turned ON' : 'Turned OFF',
+      type: LogType.error,
+      action: 'Command timeout - Physical switch not responding',
     );
-    _saveToStorage();
+    _setExecutionStatus('❌ Timeout - Try again');
     notifyListeners();
-    return true;
+    await Future.delayed(const Duration(seconds: 2));
+    _setExecutionStatus('');
+    notifyListeners();
+    return false;
   }
 
   return false;
