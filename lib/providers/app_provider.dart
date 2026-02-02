@@ -776,6 +776,7 @@ Future<bool> _toggleStandardDevice(Device device, int index) async {
       
       final success = await _espService.setBrightness(
         device.ipAddress,
+        device.name,  // ADDED
         brightness,
       );
       
@@ -803,6 +804,7 @@ Future<bool> _toggleStandardDevice(Device device, int index) async {
       
       final success = await _espService.setFanSpeed(
         device.ipAddress,
+        device.name,  // ADDED
         speed,
       );
       
