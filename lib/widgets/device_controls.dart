@@ -376,7 +376,6 @@ class _WaterLevelGaugeState extends State<WaterLevelGauge>
           ],
         ),
         // Info message - ESP controls thresholds
-        // Info message - ESP controls thresholds
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(12),
