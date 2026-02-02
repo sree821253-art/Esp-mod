@@ -318,10 +318,11 @@ class EspService {
   }
 
   // Set fan speed (if your ESP supports it)
-  Future<bool> setFanSpeed(String ipAddress, int speed) async {
+  // Set fan speed (if your ESP supports it)
+  Future<bool> setFanSpeed(String ipAddress, String deviceName, int speed) async {
     try {
       final response = await http
-          .get(Uri.parse('http://$ipAddress/speed/$speed'))
+          .get(Uri.parse('http://$ipAddress/$deviceName/speed/$speed'))
           .timeout(_timeout);
       
       return response.statusCode == 200;
