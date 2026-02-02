@@ -331,7 +331,7 @@ Future<void> syncDevices({bool silent = false}) async {
       print('╚═══════════════════════════════════════════════════════');
     }
 
-    final status = await _espService.getDeviceStatus(device.ipAddress);
+    final status = await _espService.getDeviceStatus(device.ipAddress, device.name);
 
     if (status != null) {
       if (kDebugMode) {
@@ -410,12 +410,12 @@ Future<void> syncDevices({bool silent = false}) async {
       // App just displays current state from physical switch
       
     } else {
-      // Don't mark offline immediately on single failed poll
+      // Mark device offline after failed poll
       if (kDebugMode) {
-        print('⚠️ Failed to get status from ${device.name} - keeping last known state');
+        print('⚠️ Failed to get status from ${device.name} - marking offline');
       }
-      // Only update lastSeen, keep device as "online" unless multiple consecutive failures
       _devices[i] = device.copyWith(
+        isOnline: false,  // FIXED: Actually mark offline
         lastSeen: DateTime.now(),
       );
     }
