@@ -284,6 +284,7 @@ class AppProvider extends ChangeNotifier {
 
   // Sync - REAL HTTP COMMUNICATION
 // Sync Devices - SIMPLIFIED (ESP CONTROLS THRESHOLDS)
+// Sync Devices - SIMPLIFIED (ESP CONTROLS THRESHOLDS)
 Future<void> syncDevices({bool silent = false}) async {
   if (_isSyncing) return;
   
@@ -338,10 +339,13 @@ Future<void> syncDevices({bool silent = false}) async {
         print('✓ Got status from ${device.name}');
       }
       
+      // Physical switch is source of truth
+      final physicalSwitch = status['physicalSwitchOn'] ?? status['isOn'] ?? false;
+      
       final updates = <String, dynamic>{
         'isOnline': true,
-        'isOn': status['physicalSwitchOn'] ?? status['isOn'] ?? false,  // Physical switch is source of truth
-        'physicalSwitchOn': status['physicalSwitchOn'] ?? status['isOn'] ?? false,
+        'isOn': physicalSwitch,
+        'physicalSwitchOn': physicalSwitch,
         'lastSeen': DateTime.now(),
       };
 
@@ -414,7 +418,7 @@ Future<void> syncDevices({bool silent = false}) async {
       if (kDebugMode) {
         print('⚠️ Failed to get status from ${device.name} - keeping last known state');
       }
-      // Only update lastSeen, keep device as "online" unless multiple consecutive failures
+      // Keep device as is, just update lastSeen
       _devices[i] = device.copyWith(
         lastSeen: DateTime.now(),
       );
