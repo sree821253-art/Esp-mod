@@ -459,9 +459,9 @@ Future<void> syncDevices({bool silent = false}) async {
       bool success;
       
       if (turnOn) {
-        success = await _espService.turnDeviceOn(light.ipAddress);
+        success = await _espService.turnDeviceOn(light.ipAddress, light.name);
       } else {
-        success = await _espService.turnDeviceOff(light.ipAddress);
+        success = await _espService.turnDeviceOff(light.ipAddress, light.name);
       }
 
       if (success) {
