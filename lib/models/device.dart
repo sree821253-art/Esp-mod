@@ -68,11 +68,14 @@ class Device {
   DeviceType type;
   String ipAddress;
   int? gpioPin;
+  int? onPin;              // NEW - For motor ON relay
+  int? offPin;             // NEW - For motor OFF relay
   int? statusGpioPin;
   String? roomId;
   bool isParent;
   String? parentId;
-  String? childIp;              // NEW
+  String? childIp;              
+  bool sensorViaChild;          // NEW - Water sensor on child device
   String? staticIP;
   bool isOn;
   bool physicalSwitchOn;
@@ -96,11 +99,14 @@ class Device {
     required this.type,
     required this.ipAddress,
     this.gpioPin,
+    this.onPin,              // NEW
+    this.offPin,             // NEW
     this.statusGpioPin,
     this.roomId,
     this.isParent = false,
     this.parentId,
-    this.childIp,              // NEW
+    this.childIp,
+    this.sensorViaChild = false,  // NEW
     this.staticIP,
     this.isOn = false,
     this.physicalSwitchOn = false,
@@ -126,11 +132,14 @@ class Device {
     DeviceType? type,
     String? ipAddress,
     int? gpioPin,
+    int? onPin,              // NEW
+    int? offPin,             // NEW
     int? statusGpioPin,
     String? roomId,
     bool? isParent,
     String? parentId,
-    String? childIp,           // NEW
+    String? childIp,
+    bool? sensorViaChild,      // NEW
     String? staticIP,
     bool? isOn,
     bool? physicalSwitchOn,
@@ -154,11 +163,14 @@ class Device {
       type: type ?? this.type,
       ipAddress: ipAddress ?? this.ipAddress,
       gpioPin: gpioPin ?? this.gpioPin,
+      onPin: onPin ?? this.onPin,                    // NEW
+      offPin: offPin ?? this.offPin,                  // NEW
       statusGpioPin: statusGpioPin ?? this.statusGpioPin,
       roomId: roomId ?? this.roomId,
       isParent: isParent ?? this.isParent,
       parentId: parentId ?? this.parentId,
-      childIp: childIp ?? this.childIp,                    // NEW
+      childIp: childIp ?? this.childIp,
+      sensorViaChild: sensorViaChild ?? this.sensorViaChild,  // NEW
       staticIP: staticIP ?? this.staticIP,
       isOn: isOn ?? this.isOn,
       physicalSwitchOn: physicalSwitchOn ?? this.physicalSwitchOn,
@@ -184,11 +196,14 @@ class Device {
         'type': type.index,
         'ipAddress': ipAddress,
         'gpioPin': gpioPin,
+        'onPin': onPin,                    // NEW
+        'offPin': offPin,                  // NEW
         'statusGpioPin': statusGpioPin,
         'roomId': roomId,
         'isParent': isParent,
         'parentId': parentId,
-        'childIp': childIp,                    // NEW
+        'childIp': childIp,
+        'sensorViaChild': sensorViaChild,      // NEW
         'staticIP': staticIP,
         'isOn': isOn,
         'physicalSwitchOn': physicalSwitchOn,
@@ -213,11 +228,14 @@ class Device {
         type: DeviceType.values[json['type']],
         ipAddress: json['ipAddress'],
         gpioPin: json['gpioPin'],
+        onPin: json['onPin'],                    // NEW
+        offPin: json['offPin'],                  // NEW
         statusGpioPin: json['statusGpioPin'],
         roomId: json['roomId'],
         isParent: json['isParent'] ?? false,
         parentId: json['parentId'],
-        childIp: json['childIp'],                           // NEW
+        childIp: json['childIp'],
+        sensorViaChild: json['sensorViaChild'] ?? false,    // NEW
         staticIP: json['staticIP'],
         isOn: json['isOn'] ?? false,
         physicalSwitchOn: json['physicalSwitchOn'] ?? false,
