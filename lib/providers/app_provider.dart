@@ -283,7 +283,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   // Sync - REAL HTTP COMMUNICATION
-/// DIAGNOSTIC syncDevices - Replace in app_provider.dart temporarily
+// Sync Devices - SIMPLIFIED (ESP CONTROLS THRESHOLDS)
 Future<void> syncDevices({bool silent = false}) async {
   if (_isSyncing) return;
   
@@ -328,8 +328,6 @@ Future<void> syncDevices({bool silent = false}) async {
       print('\n╔═══════════════════════════════════════════════════════');
       print('║ SYNCING DEVICE: ${device.name}');
       print('║ IP: ${device.ipAddress}');
-      print('║ Has child: ${device.hasChildBattery}');
-      print('║ Child IP: ${device.childIp}');
       print('╚═══════════════════════════════════════════════════════');
     }
 
@@ -342,12 +340,12 @@ Future<void> syncDevices({bool silent = false}) async {
       
       final updates = <String, dynamic>{
         'isOnline': true,
-        'isOn': status['isOn'] ?? false,
-        'physicalSwitchOn': status['physicalSwitchOn'] ?? false,
+        'isOn': status['physicalSwitchOn'] ?? status['isOn'] ?? false,  // Physical switch is source of truth
+        'physicalSwitchOn': status['physicalSwitchOn'] ?? status['isOn'] ?? false,
         'lastSeen': DateTime.now(),
       };
 
-      // Add sensor data from parent
+      // Add sensor data
       if (status['waterLevel'] != null) {
         updates['waterLevel'] = status['waterLevel'];
       }
@@ -367,7 +365,7 @@ Future<void> syncDevices({bool silent = false}) async {
         updates['fanSpeed'] = status['fanSpeed'];
       }
 
-      // NEW: Fetch child battery if configured
+      // Fetch child battery if configured
       if (device.hasChildBattery && device.childIp != null && device.childIp!.isNotEmpty) {
         if (kDebugMode) {
           print('\n🔋 Fetching child battery from ${device.childIp}...');
@@ -383,16 +381,11 @@ Future<void> syncDevices({bool silent = false}) async {
             }
           }
           
-          // Also update water level from child if available
           if (childStatus['waterLevel'] != null) {
             updates['waterLevel'] = childStatus['waterLevel'];
             if (kDebugMode) {
               print('✓ Water level from child: ${childStatus['waterLevel']}%');
             }
-          }
-        } else {
-          if (kDebugMode) {
-            print('✗ Could not fetch child status');
           }
         }
       }
@@ -406,108 +399,23 @@ Future<void> syncDevices({bool silent = false}) async {
         lpgValue: updates['lpgValue'],
         coValue: updates['coValue'],
         batteryLevel: updates['batteryLevel'],
-        childBatteryLevel: updates['childBatteryLevel'],  // NEW
+        childBatteryLevel: updates['childBatteryLevel'],
         brightness: updates['brightness'],
         fanSpeed: updates['fanSpeed'],
       );
       
       onlineCount++;
       
-      // Auto-control for water pump with THRESHOLD CONFIRMATION
-      if (device.type == DeviceType.waterPump && _appMode == AppMode.remote) {
-        final waterLevel = updates['waterLevel'] ?? device.waterLevel;
-        
-        if (waterLevel <= _pumpMinThreshold && !device.isOn) {
-          // 2-second confirmation delay
-          _setExecutionStatus('⏱️ Confirming threshold (2 seconds)...');
-          notifyListeners();
-          await Future.delayed(const Duration(seconds: 2));
-          
-          // Re-check water level
-          final confirmStatus = await _espService.getDeviceStatus(device.ipAddress);
-          if (confirmStatus != null && confirmStatus['waterLevel'] != null) {
-            final confirmedLevel = confirmStatus['waterLevel'];
-            
-            if (confirmedLevel <= _pumpMinThreshold) {
-              // 5-second verification with countdown
-              for (int i = 5; i > 0; i--) {
-                _setExecutionStatus('🤖 Auto-start: Verifying ($i sec)...');
-                notifyListeners();
-                await Future.delayed(const Duration(seconds: 1));
-              }
-              
-              _setExecutionStatus('🤖 Auto-start: Turning ON motor...');
-              notifyListeners();
-              
-              await _espService.turnDeviceOn(device.ipAddress);
-              _devices[i] = _devices[i].copyWith(isOn: true);
-              _addLog(
-                deviceId: device.id,
-                deviceName: device.name,
-                type: LogType.deviceOn,
-                action: 'Auto ON - Below minimum threshold (confirmed)',
-                details: 'Water level: $confirmedLevel%',
-              );
-              
-              await Future.delayed(const Duration(seconds: 1));
-              _setExecutionStatus('');
-            }
-          }
-        }
-        else if (waterLevel >= _pumpMaxThreshold && device.isOn) {
-          // 2-second confirmation delay
-          _setExecutionStatus('⏱️ Confirming threshold (2 seconds)...');
-          notifyListeners();
-          await Future.delayed(const Duration(seconds: 2));
-          
-          // Re-check water level
-          final confirmStatus = await _espService.getDeviceStatus(device.ipAddress);
-          if (confirmStatus != null && confirmStatus['waterLevel'] != null) {
-            final confirmedLevel = confirmStatus['waterLevel'];
-            
-            if (confirmedLevel >= _pumpMaxThreshold) {
-              _setExecutionStatus('🤖 Auto-stop: Sending OFF pulse...');
-              notifyListeners();
-              
-              await _espService.turnDeviceOff(device.ipAddress);
-              _devices[i] = _devices[i].copyWith(isOn: false);
-              _addLog(
-                deviceId: device.id,
-                deviceName: device.name,
-                type: LogType.deviceOff,
-                action: 'Auto OFF - Above maximum threshold (confirmed)',
-                details: 'Water level: $confirmedLevel%',
-              );
-              
-              await Future.delayed(const Duration(seconds: 1));
-              _setExecutionStatus('');
-            }
-          }
-        }
-        else if (waterLevel >= emergencyStopLevel && device.isOn) {
-          _setExecutionStatus('🚨 EMERGENCY STOP: Stopping motor...');
-          notifyListeners();
-          
-          await _espService.turnDeviceOff(device.ipAddress);
-          _devices[i] = _devices[i].copyWith(isOn: false);
-          _addLog(
-            deviceId: device.id,
-            deviceName: device.name,
-            type: LogType.warning,
-            action: 'EMERGENCY STOP',
-            details: 'Water level reached $waterLevel%',
-          );
-          
-          await Future.delayed(const Duration(seconds: 1));
-          _setExecutionStatus('');
-        }
-      }
+      // NO THRESHOLD CONTROL - ESP handles it autonomously
+      // App just displays current state from physical switch
+      
     } else {
+      // Don't mark offline immediately on single failed poll
       if (kDebugMode) {
-        print('✗ No status received from ${device.name} - marking offline');
+        print('⚠️ Failed to get status from ${device.name} - keeping last known state');
       }
+      // Only update lastSeen, keep device as "online" unless multiple consecutive failures
       _devices[i] = device.copyWith(
-        isOnline: false,
         lastSeen: DateTime.now(),
       );
     }
@@ -525,18 +433,17 @@ Future<void> syncDevices({bool silent = false}) async {
       deviceName: 'System',
       type: LogType.sync,
       action: 'Device sync completed',
-      details: '$onlineCount/${_devices.length} devices online',
+      details: '$onlineCount/${_devices.length} devices responding',
     );
   }
 
   _isSyncing = false;
   _saveToStorage();
   notifyListeners();
-
   
   if (kDebugMode) {
     print('\n═══════════════════════════════════════════════════════');
-    print('SYNC COMPLETE - $onlineCount/$totalDevices online');
+    print('SYNC COMPLETE - $onlineCount/$totalDevices responding');
     print('═══════════════════════════════════════════════════════\n');
   }
 }
