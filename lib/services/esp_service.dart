@@ -21,10 +21,11 @@ class EspService {
   }
 
   // Get device status - WITH DETAILED DEBUG LOGGING
-  Future<Map<String, dynamic>?> getDeviceStatus(String ipAddress) async {
+  // Get device status - WITH DETAILED DEBUG LOGGING
+  Future<Map<String, dynamic>?> getDeviceStatus(String ipAddress, String deviceName) async {
     try {
       final response = await http
-          .get(Uri.parse('http://$ipAddress/status'))
+          .get(Uri.parse('http://$ipAddress/$deviceName/status'))
           .timeout(_timeout);
       
       if (response.statusCode == 200) {
