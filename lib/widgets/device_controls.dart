@@ -342,7 +342,7 @@ class _WaterLevelGaugeState extends State<WaterLevelGauge>
                     ),
                   ),
                   Text(
-                    widget.isOn ? 'FILLING' : 'IDLE',
+                    widget.isOn ? 'RUNNING' : 'IDLE',
                     style: TextStyle(
                       fontSize: 12,
                       color: isDark ? Colors.white54 : Colors.black45,
@@ -375,38 +375,41 @@ class _WaterLevelGaugeState extends State<WaterLevelGauge>
             ),
           ],
         ),
-        if (widget.isRemoteMode) ...[
-          const SizedBox(height: 20),
-          Row(
+        // Info message - ESP controls thresholds
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isDark
+                ? AppTheme.neonCyan.withValues(alpha: 0.1)
+                : Colors.blue.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isDark
+                  ? AppTheme.neonCyan.withValues(alpha: 0.3)
+                  : Colors.blue.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Row(
             children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: widget.onManualOn,
-                  icon: const Icon(Icons.play_arrow),
-                  label: const Text('Manual ON'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.neonGreen.withValues(alpha: 0.2),
-                    foregroundColor: AppTheme.neonGreen,
-                    side: const BorderSide(color: AppTheme.neonGreen),
-                  ),
-                ),
+              Icon(
+                Icons.info_outline,
+                color: isDark ? AppTheme.neonCyan : Colors.blue,
+                size: 20,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: widget.onManualOff,
-                  icon: const Icon(Icons.stop),
-                  label: const Text('Manual OFF'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.neonRed.withValues(alpha: 0.2),
-                    foregroundColor: AppTheme.neonRed,
-                    side: const BorderSide(color: AppTheme.neonRed),
+                child: Text(
+                  'Motor controlled by ESP32 based on thresholds',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.white70 : Colors.black54,
                   ),
                 ),
               ),
             ],
           ),
-        ],
+        ),
         if (widget.waterLevel >= 98)
           Container(
             margin: const EdgeInsets.only(top: 16),
