@@ -243,27 +243,51 @@ class EspService {
   }
 
   // Turn device ON
-  Future<bool> turnDeviceOn(String ipAddress) async {
+  // Turn device ON
+  Future<bool> turnDeviceOn(String ipAddress, String deviceName) async {
     try {
-      final response = await http
-          .get(Uri.parse('http://$ipAddress/led/on'))
+      // Try /<deviceName>/on first
+      var response = await http
+          .get(Uri.parse('http://$ipAddress/$deviceName/on'))
+          .timeout(_timeout);
+      
+      if (response.statusCode == 200) return true;
+      
+      // Fallback to /<deviceName>/1
+      response = await http
+          .get(Uri.parse('http://$ipAddress/$deviceName/1'))
           .timeout(_timeout);
       
       return response.statusCode == 200;
     } catch (e) {
+      if (kDebugMode) {
+        print('ERROR turning ON device at $ipAddress/$deviceName: $e');
+      }
       return false;
     }
   }
 
   // Turn device OFF
-  Future<bool> turnDeviceOff(String ipAddress) async {
+  // Turn device OFF
+  Future<bool> turnDeviceOff(String ipAddress, String deviceName) async {
     try {
-      final response = await http
-          .get(Uri.parse('http://$ipAddress/led/off'))
+      // Try /<deviceName>/off first
+      var response = await http
+          .get(Uri.parse('http://$ipAddress/$deviceName/off'))
+          .timeout(_timeout);
+      
+      if (response.statusCode == 200) return true;
+      
+      // Fallback to /<deviceName>/0
+      response = await http
+          .get(Uri.parse('http://$ipAddress/$deviceName/0'))
           .timeout(_timeout);
       
       return response.statusCode == 200;
     } catch (e) {
+      if (kDebugMode) {
+        print('ERROR turning OFF device at $ipAddress/$deviceName: $e');
+      }
       return false;
     }
   }
