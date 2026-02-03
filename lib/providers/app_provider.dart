@@ -334,38 +334,16 @@ Future<void> syncDevices({bool silent = false}) async {
     final status = await _espService.getDeviceStatus(device.ipAddress, device.name);
 
     if (status != null) {
-  if (kDebugMode) {
-    print('✓ Got status from ${device.name}');
-  }
-  
-  // Use explicit bool types, not dynamic
-  final bool isDeviceOn = status['physicalSwitchOn'] ?? status['isOn'] ?? false;
-  final bool switchOn = status['physicalSwitchOn'] ?? status['isOn'] ?? false;
-  
-  _devices[i] = device.copyWith(
-    isOnline: true,  // EXPLICIT true (not from dynamic map)
-    isOn: isDeviceOn,
-    physicalSwitchOn: switchOn,
-    lastSeen: DateTime.now(),
-    waterLevel: status['waterLevel'],
-    lpgValue: status['lpgValue'],
-    coValue: status['coValue'],
-    batteryLevel: status['batteryLevel'],
-    brightness: status['brightness'],
-    fanSpeed: status['fanSpeed'],
-  );
-  
-  // Handle child battery if needed
-  if (device.hasChildBattery && device.childIp != null && device.childIp!.isNotEmpty) {
-    final childStatus = await _espService.getChildStatus(device.childIp!);
-    if (childStatus != null && childStatus['childBatteryLevel'] != null) {
-      _devices[i] = _devices[i].copyWith(
-        childBatteryLevel: childStatus['childBatteryLevel'],
-      );
-    }
-  }
-  
-  onlineCount++;
+      if (kDebugMode) {
+        print('✓ Got status from ${device.name}');
+      }
+      
+      final updates = <String, dynamic>{
+        'isOnline': true,
+        'isOn': status['physicalSwitchOn'] ?? status['isOn'] ?? false,  // Physical switch is source of truth
+        'physicalSwitchOn': status['physicalSwitchOn'] ?? status['isOn'] ?? false,
+        'lastSeen': DateTime.now(),
+      };
 
       // Add sensor data
       if (status['waterLevel'] != null) {
@@ -431,15 +409,16 @@ Future<void> syncDevices({bool silent = false}) async {
       // NO THRESHOLD CONTROL - ESP handles it autonomously
       // App just displays current state from physical switch
       
-    } } else {
-  if (kDebugMode) {
-    print('⚠️ Failed to get status from ${device.name} - marking offline');
-  }
-  _devices[i] = device.copyWith(
-    isOnline: false,  // EXPLICIT false
-    lastSeen: DateTime.now(),
-  );
-}
+    } else {
+      // Mark device offline after failed poll
+      if (kDebugMode) {
+        print('⚠️ Failed to get status from ${device.name} - marking offline');
+      }
+      _devices[i] = device.copyWith(
+        isOnline: false,  // FIXED: Actually mark offline
+        lastSeen: DateTime.now(),
+      );
+    }
 
     if (!silent) {
       _syncProgress = (i + 1) / totalDevices;
