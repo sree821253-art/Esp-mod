@@ -10,6 +10,7 @@ import '../models/room.dart';
 import '../models/log_entry.dart';
 import '../models/wifi_network.dart';
 import '../services/esp_service.dart';
+import 'package:flutter/foundation.dart'; // for kDebugMode
 
 enum AppMode { remote, localAuto }
 
@@ -43,19 +44,19 @@ class AppProvider extends ChangeNotifier {
   final _uuid = const Uuid();
   // ===== Execution Status =====
 String _executionStatus = '';
-String get executionStatus => _executionStatus;
+  String get executionStatus => _executionStatus;
 
-void _setExecutionStatus(String status) {
-  _executionStatus = status;
-  notifyListeners();
-}
-
-void _clearExecutionStatus() {
-  Future.delayed(const Duration(seconds: 3), () {
-    _executionStatus = '';
+  void _setExecutionStatus(String status) {
+    _executionStatus = status;
     notifyListeners();
-  });
-}
+  }
+
+  void _clearExecutionStatus() {
+    Future.delayed(const Duration(seconds: 3), () {
+      _executionStatus = '';
+      notifyListeners();
+    });
+  }
 
 
   // Getters
@@ -296,7 +297,7 @@ Timer? _autoSyncTimer;
   }
 
   // Sync - REAL HTTP COMMUNICATION
-Future<void> syncDevices({bool silent = false}) async {
+ Future<void> syncDevices({bool silent = false}) async {
     _isSyncing = true;
     
     if (!silent) {
@@ -368,8 +369,7 @@ Future<void> syncDevices({bool silent = false}) async {
     notifyListeners();
   }
 
-  // Master Switch - REAL HTTP COMMUNICATION
-  Future<bool> masterSwitch(String key, bool turnOn) async {
+Future<bool> masterSwitch(String key, bool turnOn) async {
     if (key != authKey) return false;
 
     final lights = lightDevices;
@@ -377,19 +377,37 @@ Future<void> syncDevices({bool silent = false}) async {
     int failCount = 0;
 
     for (final light in lights) {
-      bool success;
+      Map<String, dynamic> result;
       
       if (turnOn) {
-        success = await _espService.turnDeviceOn(light.ipAddress, light.name);
+        result = await _espService.turnDeviceOn(
+          light.ipAddress, 
+          light.name,
+          onStatusUpdate: (status) {
+            if (kDebugMode) {
+              print('Master Switch - ${light.name}: $status');
+            }
+          },
+        );
       } else {
-        success = await _espService.turnDeviceOff(light.ipAddress, light.name);
+        result = await _espService.turnDeviceOff(
+          light.ipAddress, 
+          light.name,
+          onStatusUpdate: (status) {
+            if (kDebugMode) {
+              print('Master Switch - ${light.name}: $status');
+            }
+          },
+        );
       }
 
-      if (success) {
+      if (result['success'] == true) {
         final index = _devices.indexWhere((d) => d.id == light.id);
         if (index != -1) {
           _devices[index] = _devices[index].copyWith(
-            isOn: turnOn,
+            isOn: result['isOn'] ?? turnOn,
+            physicalSwitchOn: result['physicalSwitchOn'] ?? turnOn,
+            batteryLevel: result['batteryLevel'],
             isOnline: true,
             lastSeen: DateTime.now(),
           );
@@ -408,6 +426,7 @@ Future<void> syncDevices({bool silent = false}) async {
           deviceName: light.name,
           type: LogType.error,
           action: 'Master Switch command failed',
+          details: result['message'] ?? 'Unknown error',
         );
       }
       
@@ -427,6 +446,9 @@ Future<void> syncDevices({bool silent = false}) async {
     notifyListeners();
     return failCount == 0;
   }
+
+
+
 
   // Device Management
   void addDevice(Device device) {
@@ -464,8 +486,7 @@ Future<void> syncDevices({bool silent = false}) async {
     notifyListeners();
   }
 
-// UPDATED Toggle Device - WITH STATUS TRACKING
-  Future<bool> toggleDevice(String id) async {
+Future<bool> toggleDevice(String id) async {
     final index = _devices.indexWhere((d) => d.id == id);
     if (index == -1) return false;
 
@@ -555,7 +576,6 @@ Future<void> syncDevices({bool silent = false}) async {
       return false;
     }
   }
-
 
 
 
