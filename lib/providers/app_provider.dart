@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/device.dart';
@@ -30,17 +31,15 @@ class AppProvider extends ChangeNotifier {
   double _syncProgress = 0;
   AppMode _appMode = AppMode.remote;
   String _appName = 'Home Circuit';
-  String _executionStatus = '';
   int _pumpMinThreshold = 20;
   int _pumpMaxThreshold = 80;
 
-  final List<Device> _devices = [];
-  final List<Room> _rooms = [];
-  final List<LogEntry> _logs = [];
-  final List<WifiNetwork> _wifiNetworks = [];
+  List<Device> _devices = [];
+  List<Room> _rooms = [];
+  List<LogEntry> _logs = [];
+  List<WifiNetwork> _wifiNetworks = [];
 
   Timer? _simulationTimer;
-  Timer? _autoSyncTimer;
   final _uuid = const Uuid();
 
   // Getters
@@ -53,7 +52,6 @@ class AppProvider extends ChangeNotifier {
   double get syncProgress => _syncProgress;
   AppMode get appMode => _appMode;
   String get appName => _appName;
-  String get executionStatus => _executionStatus;
   int get pumpMinThreshold => _pumpMinThreshold;
   int get pumpMaxThreshold => _pumpMaxThreshold;
 
@@ -77,18 +75,7 @@ class AppProvider extends ChangeNotifier {
     if (_isSimulationEnabled) {
       _startSimulation();
     }
-    
-    _startAutoSync();
   }
-
-  void _startAutoSync() {
-  _autoSyncTimer?.cancel();
-  _autoSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-    if (!_isSyncing && !_isSimulationEnabled) {
-      syncDevices(silent: true);  // CHANGED: Add silent: true
-    }
-  });
-}
 
   // Theme
   void toggleTheme() {
@@ -100,10 +87,6 @@ class AppProvider extends ChangeNotifier {
   void setTheme(bool isDark) {
     _isDarkMode = isDark;
     _saveToStorage();
-    notifyListeners();
-  }
-  void _setExecutionStatus(String status) {
-    _executionStatus = status;
     notifyListeners();
   }
 
@@ -209,11 +192,13 @@ class AppProvider extends ChangeNotifier {
     for (int i = 0; i < _devices.length; i++) {
       final device = _devices[i];
 
+      // Simulate online status
       _devices[i] = device.copyWith(
         isOnline: random.nextDouble() > 0.1,
         lastSeen: DateTime.now(),
       );
 
+      // Simulate water level changes for pumps
       if (device.type == DeviceType.waterPump) {
         int newLevel = device.waterLevel;
 
@@ -263,6 +248,7 @@ class AppProvider extends ChangeNotifier {
         );
       }
 
+      // Simulate gas sensor values
       if (device.type == DeviceType.gasSensor) {
         _devices[i] = device.copyWith(
           lpgValue: (random.nextDouble() * 100).clamp(0, 100),
@@ -270,6 +256,7 @@ class AppProvider extends ChangeNotifier {
         );
       }
 
+      // Simulate battery
       if (device.hasBattery && device.batteryLevel != null) {
         _devices[i] = _devices[i].copyWith(
           batteryLevel:
@@ -283,163 +270,68 @@ class AppProvider extends ChangeNotifier {
   }
 
   // Sync - REAL HTTP COMMUNICATION
-// Sync Devices - SIMPLIFIED (ESP CONTROLS THRESHOLDS)
-Future<void> syncDevices({bool silent = false}) async {
-  if (_isSyncing) return;
-  
-  _isSyncing = true;
-  
-  if (!silent) {
+  Future<void> syncDevices() async {
+    _isSyncing = true;
     _syncProgress = 0;
     notifyListeners();
-    
+
     _addLog(
       deviceId: 'system',
       deviceName: 'System',
       type: LogType.sync,
       action: 'Device sync started',
     );
-  }
 
-  final totalDevices = _devices.length;
-  if (totalDevices == 0) {
-    if (!silent) {
+    final totalDevices = _devices.length;
+    if (totalDevices == 0) {
       await Future.delayed(const Duration(seconds: 2));
       _syncProgress = 1.0;
-      _addLog(
-        deviceId: 'system',
-        deviceName: 'System',
-        type: LogType.sync,
-        action: 'Device sync completed',
-        details: 'No devices to sync',
-      );
-    }
-    _isSyncing = false;
-    notifyListeners();
-    return;
-  }
-
-  int onlineCount = 0;
-for (int i = 0; i < _devices.length; i++) {
-    final device = _devices[i];
-    
-    if (kDebugMode) {
-      print('\n╔═══════════════════════════════════════════════════════');
-      print('║ SYNCING DEVICE: ${device.name}');
-      print('║ IP: ${device.ipAddress}');
-      print('╚═══════════════════════════════════════════════════════');
+      _isSyncing = false;
+      notifyListeners();
+      return;
     }
 
-    final status = await _espService.getDeviceStatus(device.ipAddress, device.name);
-
-    if (status != null) {
-      if (kDebugMode) {
-        print('✓ Got status from ${device.name}');
-      }
+    int onlineCount = 0;
+    for (int i = 0; i < _devices.length; i++) {
+      final device = _devices[i];
       
-      final updates = <String, dynamic>{
-        'isOnline': true,
-        'isOn': status['physicalSwitchOn'] ?? status['isOn'] ?? false,
-        'physicalSwitchOn': status['physicalSwitchOn'] ?? status['isOn'] ?? false,
-        'lastSeen': DateTime.now(),
-      };
+      // Use REAL HTTP communication with device name
+      final status = await _espService.getDeviceStatus(device.ipAddress, device.name);
 
-      if (status['waterLevel'] != null) {
-        updates['waterLevel'] = status['waterLevel'];
-      }
-      if (status['lpgValue'] != null) {
-        updates['lpgValue'] = status['lpgValue'];
-      }
-      if (status['coValue'] != null) {
-        updates['coValue'] = status['coValue'];
-      }
-      if (status['batteryLevel'] != null) {
-        updates['batteryLevel'] = status['batteryLevel'];
-      }
-      if (status['brightness'] != null) {
-        updates['brightness'] = status['brightness'];
-      }
-      if (status['fanSpeed'] != null) {
-        updates['fanSpeed'] = status['fanSpeed'];
+      if (status != null) {
+        _devices[i] = device.copyWith(
+          isOnline: true,
+          isOn: status['isOn'] ?? false,
+          lastSeen: DateTime.now(),
+        );
+        onlineCount++;
+      } else {
+        _devices[i] = device.copyWith(
+          isOnline: false,
+          lastSeen: DateTime.now(),
+        );
       }
 
-      if (device.hasChildBattery && device.childIp != null && device.childIp!.isNotEmpty) {
-        if (kDebugMode) {
-          print('\n🔋 Fetching child battery from ${device.childIp}...');
-        }
-        
-        final childStatus = await _espService.getChildStatus(device.childIp!);
-        
-        if (childStatus != null) {
-          if (childStatus['childBatteryLevel'] != null) {
-            updates['childBatteryLevel'] = childStatus['childBatteryLevel'];
-            if (kDebugMode) {
-              print('✓ Child battery: ${childStatus['childBatteryLevel']}%');
-            }
-          }
-          
-          if (childStatus['waterLevel'] != null) {
-            updates['waterLevel'] = childStatus['waterLevel'];
-            if (kDebugMode) {
-              print('✓ Water level from child: ${childStatus['waterLevel']}%');
-            }
-          }
-        }
-      }
-
-      _devices[i] = device.copyWith(
-        isOnline: updates['isOnline'],
-        isOn: updates['isOn'],
-        physicalSwitchOn: updates['physicalSwitchOn'],
-        lastSeen: updates['lastSeen'],
-        waterLevel: updates['waterLevel'],
-        lpgValue: updates['lpgValue'],
-        coValue: updates['coValue'],
-        batteryLevel: updates['batteryLevel'],
-        childBatteryLevel: updates['childBatteryLevel'],
-        brightness: updates['brightness'],
-        fanSpeed: updates['fanSpeed'],
-      );
-      
-      onlineCount++;
-      
-    } else {
-      if (kDebugMode) {
-        print('⚠️ Failed to get status from ${device.name} - marking offline');
-      }
-      _devices[i] = device.copyWith(
-        isOnline: false,
-        lastSeen: DateTime.now(),
-      );
-    }
-
-    if (!silent) {
       _syncProgress = (i + 1) / totalDevices;
       notifyListeners();
+      
+      // Small delay between requests to avoid overwhelming network
       await Future.delayed(const Duration(milliseconds: 200));
     }
-  }
 
-  if (!silent) {
     _addLog(
       deviceId: 'system',
       deviceName: 'System',
       type: LogType.sync,
       action: 'Device sync completed',
-      details: '$onlineCount/${_devices.length} devices responding',
+      details: '$onlineCount/${_devices.length} devices online',
     );
+
+    _isSyncing = false;
+    _saveToStorage();
+    notifyListeners();
   }
 
-  _isSyncing = false;
-  _saveToStorage();
-  notifyListeners();
-  
-  if (kDebugMode) {
-    print('\n═══════════════════════════════════════════════════════');
-    print('SYNC COMPLETE - $onlineCount/$totalDevices responding');
-    print('═══════════════════════════════════════════════════════\n');
-  }
-}
   // Master Switch - REAL HTTP COMMUNICATION
   Future<bool> masterSwitch(String key, bool turnOn) async {
     if (key != authKey) return false;
@@ -483,6 +375,7 @@ for (int i = 0; i < _devices.length; i++) {
         );
       }
       
+      // Small delay between commands
       await Future.delayed(const Duration(milliseconds: 200));
     }
 
@@ -498,6 +391,7 @@ for (int i = 0; i < _devices.length; i++) {
     notifyListeners();
     return failCount == 0;
   }
+
   // Device Management
   void addDevice(Device device) {
     _devices.add(device);
@@ -534,212 +428,56 @@ for (int i = 0; i < _devices.length; i++) {
     notifyListeners();
   }
 
-// Toggle Device - WITH DYNAMIC PHYSICAL SWITCH POLLING
-// NEW METHOD - Motor toggle with state machine
-Future<bool> _toggleMotor(Device device, int index) async {
-  final newState = !device.isOn;
-  final startTime = DateTime.now();
-  
-  if (newState) {
-    // ═══════════ TURN ON MOTOR ═══════════
-    _setExecutionStatus('🔄 Activating ON relay...');
-    notifyListeners();
-    
-    final commandSent = await _espService.turnDeviceOn(device.ipAddress, device.name);
-    if (!commandSent) {
-      _addLog(
-        deviceId: device.id,
-        deviceName: device.name,
-        type: LogType.error,
-        action: 'Failed to activate ON relay',
-      );
-      _setExecutionStatus('❌ Command failed');
-      notifyListeners();
-      await Future.delayed(const Duration(seconds: 2));
-      _setExecutionStatus('');
-      notifyListeners();
-      return false;
-    }
-    
-    _setExecutionStatus('⏳ ON relay executing (5s delay)...');
-    notifyListeners();
-    await Future.delayed(const Duration(seconds: 5));
-    
-    _setExecutionStatus('⏳ Waiting for physical switch HIGH...');
-    notifyListeners();
-    
-    for (int i = 0; i < 20; i++) {
-      await Future.delayed(const Duration(milliseconds: 500));
-      
-      final status = await _espService.getDeviceStatus(device.ipAddress, device.name);
-      
-      if (status != null && status['physicalSwitchOn'] == true) {
-        _devices[index] = device.copyWith(
-          isOn: true,
-          physicalSwitchOn: true,
-          isOnline: true,
-          lastSeen: DateTime.now(),
-        );
-        
-        _addLog(
-          deviceId: device.id,
-          deviceName: device.name,
-          type: LogType.deviceOn,
-          action: 'Motor ON confirmed',
-        );
-        
-        _setExecutionStatus('✅ Motor ON successful!');
-        notifyListeners();
-        await Future.delayed(const Duration(seconds: 1));
-        _setExecutionStatus('');
-        _saveToStorage();
-        notifyListeners();
-        return true;
-      }
-      
-      final elapsed = DateTime.now().difference(startTime).inSeconds;
-      _setExecutionStatus('⏳ Confirming... (${elapsed}s/15s)');
-      notifyListeners();
-    }
-    
-    _addLog(
-      deviceId: device.id,
-      deviceName: device.name,
-      type: LogType.error,
-      action: 'ON timeout - Physical switch did not go HIGH',
-    );
-    _setExecutionStatus('❌ Timeout - Try again');
-    notifyListeners();
-    await Future.delayed(const Duration(seconds: 2));
-    _setExecutionStatus('');
-    notifyListeners();
-    return false;
-    
-  } else {
-    // ═══════════ TURN OFF MOTOR ═══════════
-    _setExecutionStatus('🛑 Activating OFF relay...');
-    notifyListeners();
-    
-    final commandSent = await _espService.turnDeviceOff(device.ipAddress, device.name);
-    if (!commandSent) {
-      _addLog(
-        deviceId: device.id,
-        deviceName: device.name,
-        type: LogType.error,
-        action: 'Failed to activate OFF relay',
-      );
-      _setExecutionStatus('❌ Command failed');
-      notifyListeners();
-      await Future.delayed(const Duration(seconds: 2));
-      _setExecutionStatus('');
-      notifyListeners();
-      return false;
-    }
-    
-    _setExecutionStatus('⏳ Waiting for physical switch LOW...');
-    notifyListeners();
-    
-    while (DateTime.now().difference(startTime).inSeconds < 30) {
-      await Future.delayed(const Duration(milliseconds: 300));
-      
-      final status = await _espService.getDeviceStatus(device.ipAddress, device.name);
-      
-      if (status != null && status['physicalSwitchOn'] == false) {
-        _devices[index] = device.copyWith(
-          isOn: false,
-          physicalSwitchOn: false,
-          isOnline: true,
-          lastSeen: DateTime.now(),
-        );
-        
-        _addLog(
-          deviceId: device.id,
-          deviceName: device.name,
-          type: LogType.deviceOff,
-          action: 'Motor OFF confirmed',
-        );
-        
-        _setExecutionStatus('✅ Motor OFF successful!');
-        notifyListeners();
-        await Future.delayed(const Duration(seconds: 1));
-        _setExecutionStatus('');
-        _saveToStorage();
-        notifyListeners();
-        return true;
-      }
-      
-      final elapsed = DateTime.now().difference(startTime).inSeconds;
-      _setExecutionStatus('⏳ Waiting... (${elapsed}s)');
-      notifyListeners();
-    }
-    
-    _addLog(
-      deviceId: device.id,
-      deviceName: device.name,
-      type: LogType.error,
-      action: 'OFF timeout - Motor may still be running',
-    );
-    _setExecutionStatus('❌ Timeout - Check manually');
-    notifyListeners();
-    await Future.delayed(const Duration(seconds: 2));
-    _setExecutionStatus('');
-    notifyListeners();
-    return false;
-  }
-}
+  // Toggle Device - REAL HTTP COMMUNICATION
+  Future<bool> toggleDevice(String id) async {
+    final index = _devices.indexWhere((d) => d.id == id);
+    if (index == -1) return false;
 
-// NEW METHOD - Standard device toggle
-Future<bool> _toggleStandardDevice(Device device, int index) async {
-  final newState = !device.isOn;
-  
-  bool commandSent;
-  if (newState) {
-    commandSent = await _espService.turnDeviceOn(device.ipAddress, device.name);
-  } else {
-    commandSent = await _espService.turnDeviceOff(device.ipAddress, device.name);
+    if (_appMode == AppMode.localAuto) {
+      return false; // Can't control in local auto mode
+    }
+
+    final device = _devices[index];
+    final newState = !device.isOn;
+
+    // Use REAL HTTP communication with device name
+    bool success;
+    if (newState) {
+      success = await _espService.turnDeviceOn(device.ipAddress, device.name);
+    } else {
+      success = await _espService.turnDeviceOff(device.ipAddress, device.name);
+    }
+
+    if (success) {
+      _devices[index] = device.copyWith(
+        isOn: newState,
+        isOnline: true,
+        lastSeen: DateTime.now(),
+      );
+      _addLog(
+        deviceId: device.id,
+        deviceName: device.name,
+        type: newState ? LogType.deviceOn : LogType.deviceOff,
+        action: newState ? 'Turned ON' : 'Turned OFF',
+      );
+      _saveToStorage();
+      notifyListeners();
+      return true;
+    } else {
+      _devices[index] = device.copyWith(
+        isOnline: false,
+        lastSeen: DateTime.now(),
+      );
+      _addLog(
+        deviceId: device.id,
+        deviceName: device.name,
+        type: LogType.error,
+        action: 'Command failed - Device offline',
+      );
+      notifyListeners();
+      return false;
+    }
   }
-  
-  if (!commandSent) {
-    _addLog(
-      deviceId: device.id,
-      deviceName: device.name,
-      type: LogType.error,
-      action: 'Command failed - Network error',
-    );
-    return false;
-  }
-  
-  _devices[index] = device.copyWith(
-    isOn: newState,
-    isOnline: true,
-    lastSeen: DateTime.now(),
-  );
-  
-  _addLog(
-    deviceId: device.id,
-    deviceName: device.name,
-    type: newState ? LogType.deviceOn : LogType.deviceOff,
-    action: newState ? 'Turned ON' : 'Turned OFF',
-  );
-  
-  _saveToStorage();
-  notifyListeners();
-  return true;
-}
-  // Add this public method after your private toggle methods
-Future<bool> toggleDevice(String deviceId) async {
-  final index = _devices.indexWhere((d) => d.id == deviceId);
-  if (index == -1) return false;
-  
-  final device = _devices[index];
-  
-  // Route to appropriate toggle method based on device type
-  if (device.type == DeviceType.waterPump) {
-    return await _toggleMotor(device, index);
-  } else {
-    return await _toggleStandardDevice(device, index);
-  }
-}
 
   // Set Brightness - REAL HTTP COMMUNICATION
   void setBrightness(String id, int brightness) async {
@@ -747,12 +485,14 @@ Future<bool> toggleDevice(String deviceId) async {
     if (index != -1) {
       final device = _devices[index];
       
+      // Update local state immediately for UI responsiveness
       _devices[index] = device.copyWith(brightness: brightness.clamp(0, 100));
       notifyListeners();
       
+      // Send to ESP in background with device name
       final success = await _espService.setBrightness(
         device.ipAddress,
-        device.name,  // ADDED
+        device.name,
         brightness,
       );
       
@@ -775,12 +515,14 @@ Future<bool> toggleDevice(String deviceId) async {
     if (index != -1) {
       final device = _devices[index];
       
+      // Update local state immediately
       _devices[index] = device.copyWith(fanSpeed: speed.clamp(1, 5));
       notifyListeners();
       
+      // Send to ESP in background with device name
       final success = await _espService.setFanSpeed(
         device.ipAddress,
-        device.name,  // ADDED
+        device.name,
         speed,
       );
       
@@ -820,15 +562,18 @@ Future<bool> toggleDevice(String deviceId) async {
   }
 
   void deleteRoom(String id) {
-    final roomToDelete = _rooms.firstWhere((r) => r.id == id);
+    final room = _rooms.firstWhere((r) => r.id == id);
     _rooms.removeWhere((r) => r.id == id);
-    _devices.removeWhere((d) => d.roomId == id);
-    
+    for (int i = 0; i < _devices.length; i++) {
+      if (_devices[i].roomId == id) {
+        _devices[i] = _devices[i].copyWith(roomId: null);
+      }
+    }
     _addLog(
       deviceId: 'system',
       deviceName: 'System',
       type: LogType.info,
-      action: 'Room deleted: ${roomToDelete.name}',
+      action: 'Room deleted: ${room.name}',
     );
     _saveToStorage();
     notifyListeners();
@@ -891,10 +636,9 @@ Future<bool> toggleDevice(String deviceId) async {
         details: details,
       ),
     );
-
     if (_logs.length > 1000) {
-  _logs.removeRange(1000, _logs.length);
-}
+      _logs = _logs.sublist(0, 1000);
+    }
   }
 
   void clearLogs() {
@@ -941,199 +685,140 @@ Future<bool> toggleDevice(String deviceId) async {
     final buffer = StringBuffer();
     
     final device = _devices.isNotEmpty ? _devices.first : null;
-    final isParent = device?.isParent ?? false;
     
     buffer.writeln('/*');
-    buffer.writeln(' * $_appName - ${isParent ? 'PARENT (ESP32)' : 'CHILD (ESP8266)'} Controller');
+    buffer.writeln(' * $appName - ESP8266/ESP32 Device Controller');
     buffer.writeln(' * Generated: ${DateTime.now().toIso8601String()}');
+    buffer.writeln(' * Device: ${device?.name ?? "Unknown"}');
+    buffer.writeln(' * Compatible with Flutter HTTP endpoints');
     buffer.writeln(' */');
     buffer.writeln();
-    
-    if (isParent) {
-      buffer.writeln('#include <WiFi.h>  // ESP32');
-      buffer.writeln('#include <WebServer.h>');
-      buffer.writeln('WebServer server(80);');
-    } else {
-      buffer.writeln('#include <ESP8266WiFi.h>  // ESP8266');
-      buffer.writeln('#include <ESP8266WebServer.h>');
-      buffer.writeln('ESP8266WebServer server(80);');
-    }
-    
+    buffer.writeln('#include <ESP8266WiFi.h>');
+    buffer.writeln('#include <ESP8266WebServer.h>');
     buffer.writeln();
-    buffer.writeln('// ========== NETWORK CONFIGURATION ==========');
-    
+    buffer.writeln('// ========== WIFI CONFIGURATION ==========');
     if (_wifiNetworks.isNotEmpty) {
       buffer.writeln('const char* WIFI_SSID = "${_wifiNetworks.first.ssid}";');
-      buffer.writeln('const char* WIFI_PASSWORD = "${_encryptionEnabled ? '********' : _wifiNetworks.first.password}";');
+      buffer.writeln(
+          'const char* WIFI_PASSWORD = "${_encryptionEnabled ? '********' : _wifiNetworks.first.password}";');
+    } else {
+      buffer.writeln('const char* WIFI_SSID = "YOUR_WIFI_SSID";');
+      buffer.writeln('const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";');
     }
-    
     buffer.writeln();
-    buffer.writeln('// Static IP Configuration');
-    final staticIP = device?.staticIP ?? (isParent ? '192.168.1.100' : '192.168.1.101');
-    buffer.writeln('IPAddress local_IP($staticIP);');
-    buffer.writeln('IPAddress gateway(192, 168, 1, 1);');
-    buffer.writeln('IPAddress subnet(255, 255, 255, 0);');
     
-    if (!isParent && device?.parentId != null) {
-  final parent = _devices.firstWhere(
-    (d) => d.id == device!.parentId,
-    orElse: () => _devices.first,
-  );
-  buffer.writeln('const char* PARENT_IP = "${parent.ipAddress}";');
-}
+    // Sanitize device name for endpoints
+    final deviceName = device?.name.replaceAll(' ', '_').toLowerCase() ?? 'device';
     
-    // Determine pin configuration based on device type
-    String pinDeclarations;
+    buffer.writeln('// ========== PIN CONFIGURATION ==========');
+    
     if (device?.type == DeviceType.waterPump) {
-      final onPin = device?.onPin ?? 14;
+      final onPin = device?.gpioPin ?? 14;
       final offPin = device?.offPin ?? 27;
-      final statusPin = device?.statusGpioPin ?? 4;
       
-      pinDeclarations = '''
-const int ON_PIN = $onPin;      // Motor ON relay
-const int OFF_PIN = $offPin;     // Motor OFF relay
-const int STATUS_PIN = $statusPin; // Physical switch input
-''';
+      buffer.writeln('const int ON_PIN = $onPin;   // Motor ON relay');
+      buffer.writeln('const int OFF_PIN = $offPin;  // Motor OFF relay');
     } else {
       final gpioPin = device?.gpioPin ?? 2;
-      final statusPin = device?.statusGpioPin ?? 4;
-      
-      pinDeclarations = '''
-const int CONTROL_PIN = $gpioPin;
-const int STATUS_PIN = $statusPin;
-''';
+      buffer.writeln('const int LED_PIN = $gpioPin;  // GPIO pin for LED/Relay');
     }
     
-    buffer.writeln();
-    buffer.writeln(pinDeclarations);
     buffer.writeln('bool ledState = false;');
     buffer.writeln();
-    
+    buffer.writeln('ESP8266WebServer server(80);');
+    buffer.writeln();
     buffer.writeln('void setup() {');
     buffer.writeln('  Serial.begin(115200);');
     
     if (device?.type == DeviceType.waterPump) {
       buffer.writeln('  pinMode(ON_PIN, OUTPUT);');
       buffer.writeln('  pinMode(OFF_PIN, OUTPUT);');
-      buffer.writeln('  pinMode(STATUS_PIN, INPUT_PULLUP);');
       buffer.writeln('  digitalWrite(ON_PIN, LOW);');
       buffer.writeln('  digitalWrite(OFF_PIN, LOW);');
     } else {
-      buffer.writeln('  pinMode(CONTROL_PIN, OUTPUT);');
-      buffer.writeln('  pinMode(STATUS_PIN, INPUT_PULLUP);');
-      buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
+      buffer.writeln('  pinMode(LED_PIN, OUTPUT);');
+      buffer.writeln('  digitalWrite(LED_PIN, LOW);');
     }
+    
     buffer.writeln('  ');
-    buffer.writeln('  if (!WiFi.config(local_IP, gateway, subnet)) {');
-    buffer.writeln('    Serial.println("Static IP Failed!");');
-    buffer.writeln('  }');
-    buffer.writeln('  ');
-    buffer.writeln('  WiFi.mode(WIFI_STA);');
+    buffer.writeln('  // Connect to WiFi');
     buffer.writeln('  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);');
-    buffer.writeln('  Serial.print("Connecting");');
-    buffer.writeln('  int attempts = 0;');
-    buffer.writeln('  while (WiFi.status() != WL_CONNECTED && attempts < 30) {');
+    buffer.writeln('  Serial.print("Connecting to WiFi");');
+    buffer.writeln('  while (WiFi.status() != WL_CONNECTED) {');
     buffer.writeln('    delay(500);');
     buffer.writeln('    Serial.print(".");');
-    buffer.writeln('    attempts++;');
     buffer.writeln('  }');
+    buffer.writeln('  Serial.println("");');
+    buffer.writeln('  Serial.print("Connected! IP address: ");');
+    buffer.writeln('  Serial.println(WiFi.localIP());');
     buffer.writeln('  ');
-    buffer.writeln('  if (WiFi.status() == WL_CONNECTED) {');
-    buffer.writeln('    Serial.println("\\nConnected!");');
-    buffer.writeln('    Serial.print("IP: ");');
-    buffer.writeln('    Serial.println(WiFi.localIP());');
-    buffer.writeln('  }');
-    buffer.writeln('  ');
-    final deviceName = device?.name.replaceAll(' ', '_').toLowerCase() ?? 'device';
-    
-    buffer.writeln('  server.on("/", handleRoot);');
+    buffer.writeln('  // Setup HTTP endpoints');
     buffer.writeln('  server.on("/$deviceName/status", handleStatus);');
-    buffer.writeln('  server.on("/$deviceName/on", handleOn);');
-    buffer.writeln('  server.on("/$deviceName/1", handleOn);');
-    buffer.writeln('  server.on("/$deviceName/off", handleOff);');
-    buffer.writeln('  server.on("/$deviceName/0", handleOff);');
+    
+    // Different endpoints for motor vs regular devices
+    if (device?.type == DeviceType.waterPump) {
+      buffer.writeln('  server.on("/$deviceName.on/1", handleOnPulse);');
+      buffer.writeln('  server.on("/$deviceName.on/0", handleOnRelease);');
+      buffer.writeln('  server.on("/$deviceName.off/1", handleOffPulse);');
+      buffer.writeln('  server.on("/$deviceName.off/0", handleOffRelease);');
+    } else {
+      buffer.writeln('  server.on("/$deviceName/on", handleOn);');
+      buffer.writeln('  server.on("/$deviceName/off", handleOff);');
+    }
+    
     buffer.writeln('  server.begin();');
+    buffer.writeln('  Serial.println("HTTP server started");');
     buffer.writeln('}');
     buffer.writeln();
     buffer.writeln('void loop() {');
     buffer.writeln('  server.handleClient();');
-    
-    if (device?.type == DeviceType.waterPump) {
-      buffer.writeln('  // Motor - just monitor physical switch');
-      buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
-      buffer.writeln('  if (actualState != ledState) {');
-      buffer.writeln('    ledState = actualState;');
-      buffer.writeln('  }');
-    } else {
-      buffer.writeln('  ');
-      buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
-      buffer.writeln('  if (actualState != ledState) {');
-      buffer.writeln('    ledState = actualState;');
-      buffer.writeln('    digitalWrite(CONTROL_PIN, ledState ? HIGH : LOW);');
-    }
-    if (!isParent && device?.parentId != null) {
-      buffer.writeln('    notifyParent();');
-    }
-    
-    if (device?.type != DeviceType.waterPump) {
-      buffer.writeln('  }');
-    }
-    buffer.writeln('}');
-    buffer.writeln();
-    
-    buffer.writeln('void handleRoot() {');
-    buffer.writeln('  String html = "<h1>${isParent ? 'PARENT' : 'CHILD'} Device</h1>";');
-    buffer.writeln('  html += "<p>IP: " + WiFi.localIP().toString() + "</p>";');
-    buffer.writeln('  html += "<p>Status: " + String(ledState ? "ON" : "OFF") + "</p>";');
-    buffer.writeln('  server.send(200, "text/html", html);');
     buffer.writeln('}');
     buffer.writeln();
     buffer.writeln('void handleStatus() {');
-    buffer.writeln('  // Read actual physical switch state');
-    buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
-    buffer.writeln('  ledState = actualState;');
-    buffer.writeln('  ');
-    buffer.writeln('  // Send both relay and physical switch status');
-    buffer.writeln('  String response = "relay:";');
-    buffer.writeln('  response += ledState ? "on" : "off";');
-    buffer.writeln('  response += ",switch:";');
-    buffer.writeln('  response += actualState ? "on" : "off";');
-    buffer.writeln('  ');
+    buffer.writeln('  String response = ledState ? "on" : "off";');
     buffer.writeln('  server.send(200, "text/plain", response);');
+    buffer.writeln('  Serial.println("Status request: " + response);');
     buffer.writeln('}');
     buffer.writeln();
+    
+    // Generate appropriate handlers based on device type
     if (device?.type == DeviceType.waterPump) {
-      buffer.writeln('void handleOn() {');
-      buffer.writeln('  digitalWrite(ON_PIN, HIGH);   // Activate ON relay');
-      buffer.writeln('  delay(100);');
-      buffer.writeln('  digitalWrite(ON_PIN, LOW);    // Pulse complete');
-      buffer.writeln('  server.send(200, "text/plain", "ON_PULSE_SENT");');
+      buffer.writeln('void handleOnPulse() {');
+      buffer.writeln('  digitalWrite(ON_PIN, HIGH);');
+      buffer.writeln('  server.send(200, "text/plain", "ON_RELAY_ACTIVE");');
+      buffer.writeln('  Serial.println("ON relay activated");');
       buffer.writeln('}');
       buffer.writeln();
-      buffer.writeln('void handleOff() {');
-      buffer.writeln('  digitalWrite(OFF_PIN, HIGH);  // Activate OFF relay');
-      buffer.writeln('  delay(100);');
-      buffer.writeln('  digitalWrite(OFF_PIN, LOW);   // Pulse complete');
-      buffer.writeln('  server.send(200, "text/plain", "OFF_PULSE_SENT");');
+      buffer.writeln('void handleOnRelease() {');
+      buffer.writeln('  digitalWrite(ON_PIN, LOW);');
+      buffer.writeln('  server.send(200, "text/plain", "ON_RELAY_OFF");');
+      buffer.writeln('  Serial.println("ON relay released");');
+      buffer.writeln('}');
+      buffer.writeln();
+      buffer.writeln('void handleOffPulse() {');
+      buffer.writeln('  digitalWrite(OFF_PIN, HIGH);');
+      buffer.writeln('  server.send(200, "text/plain", "OFF_RELAY_ACTIVE");');
+      buffer.writeln('  Serial.println("OFF relay activated");');
+      buffer.writeln('}');
+      buffer.writeln();
+      buffer.writeln('void handleOffRelease() {');
+      buffer.writeln('  digitalWrite(OFF_PIN, LOW);');
+      buffer.writeln('  server.send(200, "text/plain", "OFF_RELAY_OFF");');
+      buffer.writeln('  Serial.println("OFF relay released");');
       buffer.writeln('}');
     } else {
       buffer.writeln('void handleOn() {');
       buffer.writeln('  ledState = true;');
-      buffer.writeln('  digitalWrite(CONTROL_PIN, HIGH);');
-      buffer.writeln('  server.send(200, "text/plain", "ON");');
+      buffer.writeln('  digitalWrite(LED_PIN, HIGH);');
+      buffer.writeln('  server.send(200, "text/plain", "LED turned ON");');
+      buffer.writeln('  Serial.println("LED turned ON");');
       buffer.writeln('}');
       buffer.writeln();
       buffer.writeln('void handleOff() {');
       buffer.writeln('  ledState = false;');
-      buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
-      buffer.writeln('  server.send(200, "text/plain", "OFF");');
-      buffer.writeln('}');
-    }
-    
-    if (!isParent && device?.parentId != null) {
-      buffer.writeln();
-      buffer.writeln('void notifyParent() {');
-      buffer.writeln('  // TODO: Send HTTP request to parent');
+      buffer.writeln('  digitalWrite(LED_PIN, LOW);');
+      buffer.writeln('  server.send(200, "text/plain", "LED turned OFF");');
+      buffer.writeln('  Serial.println("LED turned OFF");');
       buffer.writeln('}');
     }
     
@@ -1157,36 +842,32 @@ const int STATUS_PIN = $statusPin;
       final devicesJson = prefs.getString('devices');
       if (devicesJson != null) {
         final List<dynamic> devicesList = jsonDecode(devicesJson);
-        _devices.clear();
-        _devices.addAll(devicesList.map((d) => Device.fromJson(d)).toList());
+        _devices = devicesList.map((d) => Device.fromJson(d)).toList();
       }
 
       final roomsJson = prefs.getString('rooms');
       if (roomsJson != null) {
         final List<dynamic> roomsList = jsonDecode(roomsJson);
-        _rooms.clear();
-        _rooms.addAll(roomsList.map((r) => Room.fromJson(r)).toList());
+        _rooms = roomsList.map((r) => Room.fromJson(r)).toList();
       }
 
       final logsJson = prefs.getString('logs');
       if (logsJson != null) {
         final List<dynamic> logsList = jsonDecode(logsJson);
-        _logs.clear();
-        _logs.addAll(logsList.map((l) => LogEntry.fromJson(l)).toList());
+        _logs = logsList.map((l) => LogEntry.fromJson(l)).toList();
       }
 
       final wifiJson = prefs.getString('wifiNetworks');
       if (wifiJson != null) {
         final List<dynamic> wifiList = jsonDecode(wifiJson);
-        _wifiNetworks.clear();
-        _wifiNetworks.addAll(wifiList.map((w) => WifiNetwork.fromJson(w)).toList());
+        _wifiNetworks = wifiList.map((w) => WifiNetwork.fromJson(w)).toList();
       }
 
       if (_devices.isEmpty) {
         _addDemoData();
       }
     } catch (e) {
-      if (kDebugMode) print('Error loading from storage: $e');
+      // Handle error silently
     }
   }
 
@@ -1220,21 +901,19 @@ const int STATUS_PIN = $statusPin;
         jsonEncode(_wifiNetworks.map((w) => w.toJson()).toList()),
       );
     } catch (e) {
-      if (kDebugMode) print('Error saving to storage: $e');
+      // Handle error silently
     }
   }
 
   void _addDemoData() {
-    _rooms.clear();
-    _rooms.addAll([
+    _rooms = [
       Room(id: _uuid.v4(), name: 'Living Room', type: RoomType.livingRoom),
       Room(id: _uuid.v4(), name: 'Kitchen', type: RoomType.kitchen),
       Room(id: _uuid.v4(), name: 'Bedroom', type: RoomType.bedroom),
       Room(id: _uuid.v4(), name: 'Garage', type: RoomType.garage),
-    ]);
+    ];
 
-    _devices.clear();
-    _devices.addAll([
+    _devices = [
       Device(
         id: _uuid.v4(),
         name: 'Main Light',
@@ -1302,8 +981,9 @@ const int STATUS_PIN = $statusPin;
         isOn: false,
         brightness: 50,
       ),
-    ]);
+    ];
 
+    // Add initial logs
     _addLog(
       deviceId: 'system',
       deviceName: 'System',
@@ -1317,7 +997,6 @@ const int STATUS_PIN = $statusPin;
   @override
   void dispose() {
     _simulationTimer?.cancel();
-    _autoSyncTimer?.cancel();
     super.dispose();
   }
 }
