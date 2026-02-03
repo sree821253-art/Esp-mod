@@ -1099,7 +1099,10 @@ const int STATUS_PIN = $statusPin;
     if (!isParent && device?.parentId != null) {
       buffer.writeln('    notifyParent();');
     }
-    buffer.writeln('  }');
+    
+    if (device?.type != DeviceType.waterPump) {
+      buffer.writeln('  }');
+    }
     buffer.writeln('}');
     buffer.writeln();
     
