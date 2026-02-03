@@ -320,7 +320,6 @@ Future<void> syncDevices({bool silent = false}) async {
   }
 
   int onlineCount = 0;
-
 for (int i = 0; i < _devices.length; i++) {
     final device = _devices[i];
     
@@ -345,7 +344,6 @@ for (int i = 0; i < _devices.length; i++) {
         'lastSeen': DateTime.now(),
       };
 
-      // Add sensor data
       if (status['waterLevel'] != null) {
         updates['waterLevel'] = status['waterLevel'];
       }
@@ -365,7 +363,6 @@ for (int i = 0; i < _devices.length; i++) {
         updates['fanSpeed'] = status['fanSpeed'];
       }
 
-      // Fetch child battery if configured
       if (device.hasChildBattery && device.childIp != null && device.childIp!.isNotEmpty) {
         if (kDebugMode) {
           print('\n🔋 Fetching child battery from ${device.childIp}...');
@@ -407,7 +404,6 @@ for (int i = 0; i < _devices.length; i++) {
       onlineCount++;
       
     } else {
-      // Mark device offline if status fetch failed
       if (kDebugMode) {
         print('⚠️ Failed to get status from ${device.name} - marking offline');
       }
@@ -423,6 +419,27 @@ for (int i = 0; i < _devices.length; i++) {
       await Future.delayed(const Duration(milliseconds: 200));
     }
   }
+
+  if (!silent) {
+    _addLog(
+      deviceId: 'system',
+      deviceName: 'System',
+      type: LogType.sync,
+      action: 'Device sync completed',
+      details: '$onlineCount/${_devices.length} devices responding',
+    );
+  }
+
+  _isSyncing = false;
+  _saveToStorage();
+  notifyListeners();
+  
+  if (kDebugMode) {
+    print('\n═══════════════════════════════════════════════════════');
+    print('SYNC COMPLETE - $onlineCount/$totalDevices responding');
+    print('═══════════════════════════════════════════════════════\n');
+  }
+}
   // Master Switch - REAL HTTP COMMUNICATION
   Future<bool> masterSwitch(String key, bool turnOn) async {
     if (key != authKey) return false;
@@ -518,30 +535,6 @@ for (int i = 0; i < _devices.length; i++) {
   }
 
 // Toggle Device - WITH DYNAMIC PHYSICAL SWITCH POLLING
-// Toggle Device - WITH MOTOR STATE MACHINE
-Future<bool> toggleDevice(String id) async {
-  final index = _devices.indexWhere((d) => d.id == id);
-  if (index == -1) return false;
-
-  final device = _devices[index];
-  
-  if (_appMode == AppMode.localAuto) {
-    _addLog(
-      deviceId: device.id,
-      deviceName: device.name,
-      type: LogType.info,
-      action: 'Manual override in Local Auto mode',
-    );
-  }
-  
-  // Handle motor vs regular device
-  if (device.type == DeviceType.waterPump) {
-    return await _toggleMotor(device, index);
-  } else {
-    return await _toggleStandardDevice(device, index);
-  }
-}
-
 // NEW METHOD - Motor toggle with state machine
 Future<bool> _toggleMotor(Device device, int index) async {
   final newState = !device.isOn;
