@@ -321,7 +321,7 @@ Future<void> syncDevices({bool silent = false}) async {
 
   int onlineCount = 0;
 
-  for (int i = 0; i < _devices.length; i++) {
+for (int i = 0; i < _devices.length; i++) {
     final device = _devices[i];
     
     if (kDebugMode) {
@@ -340,7 +340,7 @@ Future<void> syncDevices({bool silent = false}) async {
       
       final updates = <String, dynamic>{
         'isOnline': true,
-        'isOn': status['physicalSwitchOn'] ?? status['isOn'] ?? false,  // Physical switch is source of truth
+        'isOn': status['physicalSwitchOn'] ?? status['isOn'] ?? false,
         'physicalSwitchOn': status['physicalSwitchOn'] ?? status['isOn'] ?? false,
         'lastSeen': DateTime.now(),
       };
@@ -406,16 +406,13 @@ Future<void> syncDevices({bool silent = false}) async {
       
       onlineCount++;
       
-      // NO THRESHOLD CONTROL - ESP handles it autonomously
-      // App just displays current state from physical switch
-      
     } else {
-      // Mark device offline after failed poll
+      // Mark device offline if status fetch failed
       if (kDebugMode) {
         print('⚠️ Failed to get status from ${device.name} - marking offline');
       }
       _devices[i] = device.copyWith(
-        isOnline: false,  // FIXED: Actually mark offline
+        isOnline: false,
         lastSeen: DateTime.now(),
       );
     }
@@ -426,27 +423,6 @@ Future<void> syncDevices({bool silent = false}) async {
       await Future.delayed(const Duration(milliseconds: 200));
     }
   }
-
-  if (!silent) {
-    _addLog(
-      deviceId: 'system',
-      deviceName: 'System',
-      type: LogType.sync,
-      action: 'Device sync completed',
-      details: '$onlineCount/${_devices.length} devices responding',
-    );
-  }
-
-  _isSyncing = false;
-  _saveToStorage();
-  notifyListeners();
-  
-  if (kDebugMode) {
-    print('\n═══════════════════════════════════════════════════════');
-    print('SYNC COMPLETE - $onlineCount/$totalDevices responding');
-    print('═══════════════════════════════════════════════════════\n');
-  }
-}
   // Master Switch - REAL HTTP COMMUNICATION
   Future<bool> masterSwitch(String key, bool turnOn) async {
     if (key != authKey) return false;
