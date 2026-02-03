@@ -1082,11 +1082,20 @@ const int STATUS_PIN = $statusPin;
     buffer.writeln();
     buffer.writeln('void loop() {');
     buffer.writeln('  server.handleClient();');
-    buffer.writeln('  ');
-    buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
-    buffer.writeln('  if (actualState != ledState) {');
-    buffer.writeln('    ledState = actualState;');
-    buffer.writeln('    digitalWrite(CONTROL_PIN, ledState ? HIGH : LOW);');
+    
+    if (device?.type == DeviceType.waterPump) {
+      buffer.writeln('  // Motor - just monitor physical switch');
+      buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
+      buffer.writeln('  if (actualState != ledState) {');
+      buffer.writeln('    ledState = actualState;');
+      buffer.writeln('  }');
+    } else {
+      buffer.writeln('  ');
+      buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
+      buffer.writeln('  if (actualState != ledState) {');
+      buffer.writeln('    ledState = actualState;');
+      buffer.writeln('    digitalWrite(CONTROL_PIN, ledState ? HIGH : LOW);');
+    }
     if (!isParent && device?.parentId != null) {
       buffer.writeln('    notifyParent();');
     }
