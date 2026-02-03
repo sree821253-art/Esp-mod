@@ -631,7 +631,7 @@ Future<bool> _toggleMotor(Device device, int index) async {
       
       // Update countdown
       final elapsed = DateTime.now().difference(startTime).inSeconds;
-      _setExecutionStatus('⏳ Confirming... (${elapsed}/15s)');
+      _setExecutionStatus('⏳ Confirming... ($elapsed}/15s)');
       notifyListeners();
     }
     
