@@ -549,7 +549,6 @@ Future<bool> _toggleMotor(Device device, int index) async {
   
   if (newState) {
     // ═══════════ TURN ON MOTOR ═══════════
-    // Step 1: Activate ON relay
     _setExecutionStatus('🔄 Activating ON relay...');
     notifyListeners();
     
@@ -569,12 +568,10 @@ Future<bool> _toggleMotor(Device device, int index) async {
       return false;
     }
     
-    // Step 2: Wait for 5 second relay execution delay
     _setExecutionStatus('⏳ ON relay executing (5s delay)...');
     notifyListeners();
     await Future.delayed(const Duration(seconds: 5));
     
-    // Step 3: Poll for physical switch to go HIGH
     _setExecutionStatus('⏳ Waiting for physical switch HIGH...');
     notifyListeners();
     
@@ -584,7 +581,6 @@ Future<bool> _toggleMotor(Device device, int index) async {
       final status = await _espService.getDeviceStatus(device.ipAddress, device.name);
       
       if (status != null && status['physicalSwitchOn'] == true) {
-        // SUCCESS - Motor is ON
         _devices[index] = device.copyWith(
           isOn: true,
           physicalSwitchOn: true,
@@ -613,12 +609,11 @@ Future<bool> _toggleMotor(Device device, int index) async {
       notifyListeners();
     }
     
-    // TIMEOUT - Physical switch didn't go HIGH
     _addLog(
       deviceId: device.id,
       deviceName: device.name,
       type: LogType.error,
-      action: 'ON timeout - Physical switch did not respond',
+      action: 'ON timeout - Physical switch did not go HIGH',
     );
     _setExecutionStatus('❌ Timeout - Try again');
     notifyListeners();
@@ -629,7 +624,6 @@ Future<bool> _toggleMotor(Device device, int index) async {
     
   } else {
     // ═══════════ TURN OFF MOTOR ═══════════
-    // Step 1: Activate OFF relay (no delay on this relay)
     _setExecutionStatus('🛑 Activating OFF relay...');
     notifyListeners();
     
@@ -649,7 +643,6 @@ Future<bool> _toggleMotor(Device device, int index) async {
       return false;
     }
     
-    // Step 2: Poll immediately for physical switch to go LOW (no relay delay)
     _setExecutionStatus('⏳ Waiting for physical switch LOW...');
     notifyListeners();
     
@@ -659,7 +652,6 @@ Future<bool> _toggleMotor(Device device, int index) async {
       final status = await _espService.getDeviceStatus(device.ipAddress, device.name);
       
       if (status != null && status['physicalSwitchOn'] == false) {
-        // SUCCESS - Motor is OFF
         _devices[index] = device.copyWith(
           isOn: false,
           physicalSwitchOn: false,
@@ -688,7 +680,6 @@ Future<bool> _toggleMotor(Device device, int index) async {
       notifyListeners();
     }
     
-    // TIMEOUT - Physical switch didn't go LOW
     _addLog(
       deviceId: device.id,
       deviceName: device.name,
