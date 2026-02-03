@@ -1065,110 +1065,10 @@ const int STATUS_PIN = $statusPin;
     buffer.writeln('  ');
     buffer.writeln('  if (WiFi.status() == WL_CONNECTED) {');
     buffer.writeln('    Serial.println("\\nConnected!");');
-// Arduino Code Generation
-  String generateArduinoCode() {
-    final buffer = StringBuffer();
-    
-    final device = _devices.isNotEmpty ? _devices.first : null;
-    final isParent = device?.isParent ?? false;
-    
-    buffer.writeln('/*');
-    buffer.writeln(' * $_appName - ${isParent ? 'PARENT (ESP32)' : 'CHILD (ESP8266)'} Controller');
-    buffer.writeln(' * Generated: ${DateTime.now().toIso8601String()}');
-    buffer.writeln(' */');
-    buffer.writeln();
-    
-    if (isParent) {
-      buffer.writeln('#include <WiFi.h>  // ESP32');
-      buffer.writeln('#include <WebServer.h>');
-      buffer.writeln('WebServer server(80);');
-    } else {
-      buffer.writeln('#include <ESP8266WiFi.h>  // ESP8266');
-      buffer.writeln('#include <ESP8266WebServer.h>');
-      buffer.writeln('ESP8266WebServer server(80);');
-    }
-    
-    buffer.writeln();
-    buffer.writeln('// ========== NETWORK CONFIGURATION ==========');
-    
-    if (_wifiNetworks.isNotEmpty) {
-      buffer.writeln('const char* WIFI_SSID = "${_wifiNetworks.first.ssid}";');
-      buffer.writeln('const char* WIFI_PASSWORD = "${_encryptionEnabled ? '********' : _wifiNetworks.first.password}";');
-    }
-    
-    buffer.writeln();
-    buffer.writeln('// Static IP Configuration');
-    final staticIP = device?.staticIP ?? (isParent ? '192.168.1.100' : '192.168.1.101');
-    buffer.writeln('IPAddress local_IP($staticIP);');
-    buffer.writeln('IPAddress gateway(192, 168, 1, 1);');
-    buffer.writeln('IPAddress subnet(255, 255, 255, 0);');
-    
-    if (!isParent && device?.parentId != null) {
-      final parent = _devices.firstWhere(
-        (d) => d.id == device!.parentId,
-        orElse: () => _devices.first,
-      );
-      buffer.writeln('const char* PARENT_IP = "${parent.ipAddress}";');
-    }
-    
-    // Determine pin configuration based on device type
-    buffer.writeln();
-    if (device?.type == DeviceType.waterPump) {
-      final onPin = device?.onPin ?? 14;
-      final offPin = device?.offPin ?? 27;
-      final statusPin = device?.statusGpioPin ?? 4;
-      
-      buffer.writeln('const int ON_PIN = $onPin;      // Motor ON relay');
-      buffer.writeln('const int OFF_PIN = $offPin;     // Motor OFF relay');
-      buffer.writeln('const int STATUS_PIN = $statusPin; // Physical switch input');
-    } else {
-      final gpioPin = device?.gpioPin ?? 2;
-      final statusPin = device?.statusGpioPin ?? 4;
-      
-      buffer.writeln('const int CONTROL_PIN = $gpioPin;');
-      buffer.writeln('const int STATUS_PIN = $statusPin;');
-    }
-    
-    buffer.writeln('bool ledState = false;');
-    buffer.writeln();
-    
-    buffer.writeln('void setup() {');
-    buffer.writeln('  Serial.begin(115200);');
-    
-    if (device?.type == DeviceType.waterPump) {
-      buffer.writeln('  pinMode(ON_PIN, OUTPUT);');
-      buffer.writeln('  pinMode(OFF_PIN, OUTPUT);');
-      buffer.writeln('  pinMode(STATUS_PIN, INPUT_PULLUP);');
-      buffer.writeln('  digitalWrite(ON_PIN, LOW);');
-      buffer.writeln('  digitalWrite(OFF_PIN, LOW);');
-    } else {
-      buffer.writeln('  pinMode(CONTROL_PIN, OUTPUT);');
-      buffer.writeln('  pinMode(STATUS_PIN, INPUT_PULLUP);');
-      buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
-    }
-    
-    buffer.writeln('  ');
-    buffer.writeln('  if (!WiFi.config(local_IP, gateway, subnet)) {');
-    buffer.writeln('    Serial.println("Static IP Failed!");');
-    buffer.writeln('  }');
-    buffer.writeln('  ');
-    buffer.writeln('  WiFi.mode(WIFI_STA);');
-    buffer.writeln('  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);');
-    buffer.writeln('  Serial.print("Connecting");');
-    buffer.writeln('  int attempts = 0;');
-    buffer.writeln('  while (WiFi.status() != WL_CONNECTED && attempts < 30) {');
-    buffer.writeln('    delay(500);');
-    buffer.writeln('    Serial.print(".");');
-    buffer.writeln('    attempts++;');
-    buffer.writeln('  }');
-    buffer.writeln('  ');
-    buffer.writeln('  if (WiFi.status() == WL_CONNECTED) {');
-    buffer.writeln('    Serial.println("\\nConnected!");');
     buffer.writeln('    Serial.print("IP: ");');
     buffer.writeln('    Serial.println(WiFi.localIP());');
     buffer.writeln('  }');
     buffer.writeln('  ');
-    
     final deviceName = device?.name.replaceAll(' ', '_').toLowerCase() ?? 'device';
     
     buffer.writeln('  server.on("/", handleRoot);');
@@ -1180,7 +1080,6 @@ const int STATUS_PIN = $statusPin;
     buffer.writeln('  server.begin();');
     buffer.writeln('}');
     buffer.writeln();
-    
     buffer.writeln('void loop() {');
     buffer.writeln('  server.handleClient();');
     
@@ -1196,12 +1095,14 @@ const int STATUS_PIN = $statusPin;
       buffer.writeln('  if (actualState != ledState) {');
       buffer.writeln('    ledState = actualState;');
       buffer.writeln('    digitalWrite(CONTROL_PIN, ledState ? HIGH : LOW);');
-      if (!isParent && device?.parentId != null) {
-        buffer.writeln('    notifyParent();');
-      }
-      buffer.writeln('  }');
+    }
+    if (!isParent && device?.parentId != null) {
+      buffer.writeln('    notifyParent();');
     }
     
+    if (device?.type != DeviceType.waterPump) {
+      buffer.writeln('  }');
+    }
     buffer.writeln('}');
     buffer.writeln();
     
@@ -1212,11 +1113,12 @@ const int STATUS_PIN = $statusPin;
     buffer.writeln('  server.send(200, "text/html", html);');
     buffer.writeln('}');
     buffer.writeln();
-    
     buffer.writeln('void handleStatus() {');
+    buffer.writeln('  // Read actual physical switch state');
     buffer.writeln('  bool actualState = !digitalRead(STATUS_PIN);');
     buffer.writeln('  ledState = actualState;');
     buffer.writeln('  ');
+    buffer.writeln('  // Send both relay and physical switch status');
     buffer.writeln('  String response = "relay:";');
     buffer.writeln('  response += ledState ? "on" : "off";');
     buffer.writeln('  response += ",switch:";');
@@ -1225,7 +1127,6 @@ const int STATUS_PIN = $statusPin;
     buffer.writeln('  server.send(200, "text/plain", response);');
     buffer.writeln('}');
     buffer.writeln();
-    
     if (device?.type == DeviceType.waterPump) {
       buffer.writeln('void handleOn() {');
       buffer.writeln('  digitalWrite(ON_PIN, HIGH);   // Activate ON relay');
@@ -1263,8 +1164,6 @@ const int STATUS_PIN = $statusPin;
     
     return buffer.toString();
   }
-    
-  
 
   // Storage
   Future<void> _loadFromStorage() async {
