@@ -41,6 +41,15 @@ class AppProvider extends ChangeNotifier {
 
   Timer? _simulationTimer;
   final _uuid = const Uuid();
+  // ===== Execution Status =====
+String _executionStatus = '';
+String get executionStatus => _executionStatus;
+
+void _setExecutionStatus(String status) {
+  _executionStatus = status;
+  notifyListeners();
+}
+
 
   // Getters
   bool get isDarkMode => _isDarkMode;
