@@ -50,6 +50,13 @@ void _setExecutionStatus(String status) {
   notifyListeners();
 }
 
+void _clearExecutionStatus() {
+  Future.delayed(const Duration(seconds: 3), () {
+    _executionStatus = '';
+    notifyListeners();
+  });
+}
+
 
   // Getters
   bool get isDarkMode => _isDarkMode;
@@ -290,30 +297,30 @@ Timer? _autoSyncTimer;
 
   // Sync - REAL HTTP COMMUNICATION
 Future<void> syncDevices({bool silent = false}) async {
-  _isSyncing = true;
-  
-  if (!silent) {
-    _syncProgress = 0;
-    notifyListeners();
+    _isSyncing = true;
     
-    _addLog(
-      deviceId: 'system',
-      deviceName: 'System',
-      type: LogType.sync,
-      action: 'Device sync started',
-    );
-  }
-
-  final totalDevices = _devices.length;
-  if (totalDevices == 0) {
     if (!silent) {
-      await Future.delayed(const Duration(seconds: 2));
-      _syncProgress = 1.0;
+      _syncProgress = 0;
+      notifyListeners();
+      
+      _addLog(
+        deviceId: 'system',
+        deviceName: 'System',
+        type: LogType.sync,
+        action: 'Device sync started',
+      );
     }
-    _isSyncing = false;
-    notifyListeners();
-    return;
-  }
+
+    final totalDevices = _devices.length;
+    if (totalDevices == 0) {
+      if (!silent) {
+        await Future.delayed(const Duration(seconds: 2));
+        _syncProgress = 1.0;
+      }
+      _isSyncing = false;
+      notifyListeners();
+      return;
+    }
 
     int onlineCount = 0;
     for (int i = 0; i < _devices.length; i++) {
@@ -326,6 +333,9 @@ Future<void> syncDevices({bool silent = false}) async {
         _devices[i] = device.copyWith(
           isOnline: true,
           isOn: status['isOn'] ?? false,
+          physicalSwitchOn: status['physicalSwitchOn'] ?? false,
+          batteryLevel: status['batteryLevel'],
+          waterLevel: status['waterLevel'] ?? device.waterLevel,
           lastSeen: DateTime.now(),
         );
         onlineCount++;
@@ -454,56 +464,100 @@ Future<void> syncDevices({bool silent = false}) async {
     notifyListeners();
   }
 
-  // Toggle Device - REAL HTTP COMMUNICATION
+// UPDATED Toggle Device - WITH STATUS TRACKING
   Future<bool> toggleDevice(String id) async {
     final index = _devices.indexWhere((d) => d.id == id);
     if (index == -1) return false;
 
     if (_appMode == AppMode.localAuto) {
-      return false; // Can't control in local auto mode
+      return false;
     }
 
     final device = _devices[index];
     final newState = !device.isOn;
 
-    // Use REAL HTTP communication with device name
-    bool success;
-    if (newState) {
-      success = await _espService.turnDeviceOn(device.ipAddress, device.name);
-    } else {
-      success = await _espService.turnDeviceOff(device.ipAddress, device.name);
-    }
+    // Show status
+    _setExecutionStatus(
+      newState ? 'Turning ON ${device.name}...' : 'Turning OFF ${device.name}...'
+    );
 
-    if (success) {
-      _devices[index] = device.copyWith(
-        isOn: newState,
-        isOnline: true,
-        lastSeen: DateTime.now(),
-      );
-      _addLog(
-        deviceId: device.id,
-        deviceName: device.name,
-        type: newState ? LogType.deviceOn : LogType.deviceOff,
-        action: newState ? 'Turned ON' : 'Turned OFF',
-      );
-      _saveToStorage();
-      notifyListeners();
-      return true;
-    } else {
-      _devices[index] = device.copyWith(
-        isOnline: false,
-        lastSeen: DateTime.now(),
-      );
+    try {
+      // Use REAL HTTP communication with status callbacks
+      Map<String, dynamic> result;
+      
+      if (newState) {
+        result = await _espService.turnDeviceOn(
+          device.ipAddress,
+          device.name,
+          onStatusUpdate: (status) {
+            _setExecutionStatus(status);
+          },
+        );
+      } else {
+        result = await _espService.turnDeviceOff(
+          device.ipAddress,
+          device.name,
+          onStatusUpdate: (status) {
+            _setExecutionStatus(status);
+          },
+        );
+      }
+
+      if (result['success'] == true) {
+        _devices[index] = device.copyWith(
+          isOn: result['isOn'] ?? newState,
+          physicalSwitchOn: result['physicalSwitchOn'] ?? newState,
+          batteryLevel: result['batteryLevel'],
+          isOnline: true,
+          lastSeen: DateTime.now(),
+        );
+        
+        _addLog(
+          deviceId: device.id,
+          deviceName: device.name,
+          type: newState ? LogType.deviceOn : LogType.deviceOff,
+          action: newState ? 'Turned ON' : 'Turned OFF',
+          details: 'Physical switch confirmed: ${result['physicalSwitchOn']}',
+        );
+        
+        _saveToStorage();
+        notifyListeners();
+        _clearExecutionStatus();
+        return true;
+      } else {
+        _devices[index] = device.copyWith(
+          isOnline: false,
+          lastSeen: DateTime.now(),
+        );
+        
+        _addLog(
+          deviceId: device.id,
+          deviceName: device.name,
+          type: LogType.error,
+          action: 'Command failed',
+          details: result['message'] ?? 'Unknown error',
+        );
+        
+        notifyListeners();
+        _clearExecutionStatus();
+        return false;
+      }
+    } catch (e) {
+      _setExecutionStatus('❌ Error: $e');
       _addLog(
         deviceId: device.id,
         deviceName: device.name,
         type: LogType.error,
-        action: 'Command failed - Device offline',
+        action: 'Exception occurred',
+        details: e.toString(),
       );
-      notifyListeners();
+      _clearExecutionStatus();
       return false;
     }
   }
+
+
+
 
   // Set Brightness - REAL HTTP COMMUNICATION
   void setBrightness(String id, int brightness) async {
