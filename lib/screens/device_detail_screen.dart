@@ -173,13 +173,32 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                               value: device.ipAddress,
                               color: isDark ? AppTheme.neonCyan : Colors.blue,
                             ),
-                            if (device.gpioPin != null)
-                              _InfoRow(
-                                icon: Icons.memory,
-                                label: 'GPIO Pin',
-                                value: '${device.gpioPin}',
-                                color: AppTheme.neonAmber,
-                              ),
+                            // Motor-specific pins
+                            if (device.type == DeviceType.waterPump) ...[
+                              if (device.onPin != null)
+                                _InfoRow(
+                                  icon: Icons.power,
+                                  label: 'ON Pin',
+                                  value: 'GPIO ${device.onPin}',
+                                  color: AppTheme.neonGreen,
+                                ),
+                              if (device.offPin != null)
+                                _InfoRow(
+                                  icon: Icons.power_off,
+                                  label: 'OFF Pin',
+                                  value: 'GPIO ${device.offPin}',
+                                  color: AppTheme.neonRed,
+                                ),
+                            ] else ...[
+                              // Standard devices GPIO
+                              if (device.gpioPin != null)
+                                _InfoRow(
+                                  icon: Icons.memory,
+                                  label: 'GPIO Pin',
+                                  value: 'GPIO ${device.gpioPin}',
+                                  color: AppTheme.neonAmber,
+                                ),
+                            ],
                             _InfoRow(
                               icon: device.isOnline
                                   ? Icons.check_circle
