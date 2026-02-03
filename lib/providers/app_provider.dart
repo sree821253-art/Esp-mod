@@ -726,6 +726,20 @@ Future<bool> _toggleStandardDevice(Device device, int index) async {
   notifyListeners();
   return true;
 }
+  // Add this public method after your private toggle methods
+Future<bool> toggleDevice(String deviceId) async {
+  final index = _devices.indexWhere((d) => d.id == deviceId);
+  if (index == -1) return false;
+  
+  final device = _devices[index];
+  
+  // Route to appropriate toggle method based on device type
+  if (device.type == DeviceType.waterPump) {
+    return await _toggleMotor(device, index);
+  } else {
+    return await _toggleStandardDevice(device, index);
+  }
+}
 
   // Set Brightness - REAL HTTP COMMUNICATION
   void setBrightness(String id, int brightness) async {
