@@ -43,6 +43,8 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
     _nameController.dispose();
     _ipController.dispose();
     _gpioController.dispose();
+    _onPinController.dispose();         // NEW
+    _offPinController.dispose();        // NEW
     _statusGpioController.dispose();
     _childIpController.dispose();
     super.dispose();
@@ -259,26 +261,78 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                         ),
                         const SizedBox(height: 16),
                         // GPIO Pin
-                        TextFormField(
-                          controller: _gpioController,
-                          decoration: const InputDecoration(
-                            labelText: 'GPIO Pin',
-                            prefixIcon: Icon(Icons.memory),
-                            hintText: 'e.g., 5',
+                        // GPIO Pin configuration - changes based on device type
+                        if (_selectedType == DeviceType.waterPump) ...[
+                          // Motor-specific pins
+                          TextFormField(
+                            controller: _onPinController,
+                            decoration: const InputDecoration(
+                              labelText: 'ON Pin (Required for Motor)',
+                              prefixIcon: Icon(Icons.power),
+                              hintText: 'e.g., 14 - Motor ON relay',
+                            ),
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'ON Pin required for motors';
+                              }
+                              return null;
+                            },
                           ),
-                          keyboardType: TextInputType.number,
-                        ),
-                        const SizedBox(height: 16),
-                        // Status GPIO Pin
-                        TextFormField(
-                          controller: _statusGpioController,
-                          decoration: const InputDecoration(
-                            labelText: 'Status GPIO Pin (Optional)',
-                            prefixIcon: Icon(Icons.sensors),
-                            hintText: 'e.g., 4 - reads actual switch state',
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _offPinController,
+                            decoration: const InputDecoration(
+                              labelText: 'OFF Pin (Required for Motor)',
+                              prefixIcon: Icon(Icons.power_off),
+                              hintText: 'e.g., 27 - Motor OFF relay',
+                            ),
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'OFF Pin required for motors';
+                              }
+                              return null;
+                            },
                           ),
-                          keyboardType: TextInputType.number,
-                        ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _statusGpioController,
+                            decoration: const InputDecoration(
+                              labelText: 'Physical Switch Pin (Required)',
+                              prefixIcon: Icon(Icons.sensors),
+                              hintText: 'e.g., 4 - reads motor state',
+                            ),
+                            keyboardType: TextInputType.number,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Physical switch pin required';
+                              }
+                              return null;
+                            },
+                          ),
+                        ] else ...[
+                          // Standard GPIO for lights/fans
+                          TextFormField(
+                            controller: _gpioController,
+                            decoration: const InputDecoration(
+                              labelText: 'GPIO Pin',
+                              prefixIcon: Icon(Icons.memory),
+                              hintText: 'e.g., 5',
+                            ),
+                            keyboardType: TextInputType.number,
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _statusGpioController,
+                            decoration: const InputDecoration(
+                              labelText: 'Status GPIO Pin (Optional)',
+                              prefixIcon: Icon(Icons.sensors),
+                              hintText: 'e.g., 4 - reads actual switch state',
+                            ),
+                            keyboardType: TextInputType.number,
+                          ),
+                        ],
                         const SizedBox(height: 16),
                         // Room selection
                         DropdownButtonFormField<String?>(
@@ -359,6 +413,51 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
                           ],
                         ),
                         const SizedBox(height: 16),
+                        // Sensor via Child (for motors only)
+                        if (_selectedType == DeviceType.waterPump) ...[
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.water_drop,
+                                color: isDark
+                                    ? AppTheme.neonCyan
+                                    : Theme.of(context).primaryColor,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Water Sensor via Child',
+                                      style: TextStyle(
+                                        color: isDark
+                                            ? Colors.white
+                                            : Colors.black87,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Sensor on separate ESP',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isDark
+                                            ? Colors.white54
+                                            : Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Switch(
+                                value: _sensorViaChild,
+                                onChanged: (value) {
+                                  setState(() => _sensorViaChild = value);
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                        ],
                         // Child Battery Configuration
                         Row(
                           children: [
@@ -484,13 +583,24 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
       name: _nameController.text.trim(),
       type: _selectedType,
       ipAddress: _ipController.text.trim(),
-      gpioPin: int.tryParse(_gpioController.text),
+      gpioPin: _selectedType != DeviceType.waterPump 
+          ? int.tryParse(_gpioController.text) 
+          : null,
+      onPin: _selectedType == DeviceType.waterPump 
+          ? int.tryParse(_onPinController.text) 
+          : null,
+      offPin: _selectedType == DeviceType.waterPump 
+          ? int.tryParse(_offPinController.text) 
+          : null,
       statusGpioPin: int.tryParse(_statusGpioController.text),
       roomId: _selectedRoomId,
+      sensorViaChild: _sensorViaChild,
       hasBattery: _hasBattery,
       batteryLevel: _hasBattery ? 100 : null,
       hasChildBattery: _hasChildBattery,
-      childIp: _hasChildBattery ? _childIpController.text.trim() : null,
+      childIp: _hasChildBattery || _sensorViaChild 
+          ? _childIpController.text.trim() 
+          : null,
       isOnline: true,
     );
 
