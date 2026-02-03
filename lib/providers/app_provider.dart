@@ -75,8 +75,18 @@ class AppProvider extends ChangeNotifier {
     if (_isSimulationEnabled) {
       _startSimulation();
     }
+     _startAutoSync();
   }
-
+Timer? _autoSyncTimer;
+  
+  void _startAutoSync() {
+    _autoSyncTimer?.cancel();
+    _autoSyncTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!_isSyncing && !_isSimulationEnabled) {
+        syncDevices(silent: true);
+      }
+    });
+  }
   // Theme
   void toggleTheme() {
     _isDarkMode = !_isDarkMode;
@@ -270,26 +280,31 @@ class AppProvider extends ChangeNotifier {
   }
 
   // Sync - REAL HTTP COMMUNICATION
-  Future<void> syncDevices() async {
-    _isSyncing = true;
+Future<void> syncDevices({bool silent = false}) async {
+  _isSyncing = true;
+  
+  if (!silent) {
     _syncProgress = 0;
     notifyListeners();
-
+    
     _addLog(
       deviceId: 'system',
       deviceName: 'System',
       type: LogType.sync,
       action: 'Device sync started',
     );
+  }
 
-    final totalDevices = _devices.length;
-    if (totalDevices == 0) {
+  final totalDevices = _devices.length;
+  if (totalDevices == 0) {
+    if (!silent) {
       await Future.delayed(const Duration(seconds: 2));
       _syncProgress = 1.0;
-      _isSyncing = false;
-      notifyListeners();
-      return;
     }
+    _isSyncing = false;
+    notifyListeners();
+    return;
+  }
 
     int onlineCount = 0;
     for (int i = 0; i < _devices.length; i++) {
@@ -312,20 +327,22 @@ class AppProvider extends ChangeNotifier {
         );
       }
 
-      _syncProgress = (i + 1) / totalDevices;
-      notifyListeners();
-      
-      // Small delay between requests to avoid overwhelming network
-      await Future.delayed(const Duration(milliseconds: 200));
+      if (!silent) {
+        _syncProgress = (i + 1) / totalDevices;
+        notifyListeners();
+        await Future.delayed(const Duration(milliseconds: 200));
+      }
     }
 
-    _addLog(
-      deviceId: 'system',
-      deviceName: 'System',
-      type: LogType.sync,
-      action: 'Device sync completed',
-      details: '$onlineCount/${_devices.length} devices online',
-    );
+    if (!silent) {
+      _addLog(
+        deviceId: 'system',
+        deviceName: 'System',
+        type: LogType.sync,
+        action: 'Device sync completed',
+        details: '$onlineCount/${_devices.length} devices online',
+      );
+    }
 
     _isSyncing = false;
     _saveToStorage();
@@ -997,6 +1014,7 @@ class AppProvider extends ChangeNotifier {
   @override
   void dispose() {
     _simulationTimer?.cancel();
+    _autoSyncTimer?.cancel();
     super.dispose();
   }
 }
