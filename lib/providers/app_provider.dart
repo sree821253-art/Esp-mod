@@ -1006,20 +1006,48 @@ Future<bool> _toggleStandardDevice(Device device, int index) async {
   buffer.writeln('const char* PARENT_IP = "${parent.ipAddress}";');
 }
     
-    final gpioPin = device?.gpioPin ?? 2;
-    final statusPin = device?.statusGpioPin ?? 4;
+    // Determine pin configuration based on device type
+    String pinDeclarations;
+    if (device?.type == DeviceType.waterPump) {
+      final onPin = device?.onPin ?? 14;
+      final offPin = device?.offPin ?? 27;
+      final statusPin = device?.statusGpioPin ?? 4;
+      
+      pinDeclarations = '''
+const int ON_PIN = $onPin;      // Motor ON relay
+const int OFF_PIN = $offPin;     // Motor OFF relay
+const int STATUS_PIN = $statusPin; // Physical switch input
+''';
+    } else {
+      final gpioPin = device?.gpioPin ?? 2;
+      final statusPin = device?.statusGpioPin ?? 4;
+      
+      pinDeclarations = '''
+const int CONTROL_PIN = $gpioPin;
+const int STATUS_PIN = $statusPin;
+''';
+    }
     
     buffer.writeln();
-    buffer.writeln('const int CONTROL_PIN = $gpioPin;');
+    buffer.writeln(pinDeclarations);
     buffer.writeln('const int STATUS_PIN = $statusPin;');
     buffer.writeln('bool ledState = false;');
     buffer.writeln();
     
     buffer.writeln('void setup() {');
     buffer.writeln('  Serial.begin(115200);');
-    buffer.writeln('  pinMode(CONTROL_PIN, OUTPUT);');
-    buffer.writeln('  pinMode(STATUS_PIN, INPUT_PULLUP);');
-    buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
+    
+    if (device?.type == DeviceType.waterPump) {
+      buffer.writeln('  pinMode(ON_PIN, OUTPUT);');
+      buffer.writeln('  pinMode(OFF_PIN, OUTPUT);');
+      buffer.writeln('  pinMode(STATUS_PIN, INPUT_PULLUP);');
+      buffer.writeln('  digitalWrite(ON_PIN, LOW);');
+      buffer.writeln('  digitalWrite(OFF_PIN, LOW);');
+    } else {
+      buffer.writeln('  pinMode(CONTROL_PIN, OUTPUT);');
+      buffer.writeln('  pinMode(STATUS_PIN, INPUT_PULLUP);');
+      buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
+    }
     buffer.writeln('  ');
     buffer.writeln('  if (!WiFi.config(local_IP, gateway, subnet)) {');
     buffer.writeln('    Serial.println("Static IP Failed!");');
@@ -1041,10 +1069,14 @@ Future<bool> _toggleStandardDevice(Device device, int index) async {
     buffer.writeln('    Serial.println(WiFi.localIP());');
     buffer.writeln('  }');
     buffer.writeln('  ');
+    final deviceName = device?.name.replaceAll(' ', '_').toLowerCase() ?? 'device';
+    
     buffer.writeln('  server.on("/", handleRoot);');
-    buffer.writeln('  server.on("/status", handleStatus);');
-    buffer.writeln('  server.on("/led/on", handleLedOn);');
-    buffer.writeln('  server.on("/led/off", handleLedOff);');
+    buffer.writeln('  server.on("/$deviceName/status", handleStatus);');
+    buffer.writeln('  server.on("/$deviceName/on", handleOn);');
+    buffer.writeln('  server.on("/$deviceName/1", handleOn);');
+    buffer.writeln('  server.on("/$deviceName/off", handleOff);');
+    buffer.writeln('  server.on("/$deviceName/0", handleOff);');
     buffer.writeln('  server.begin();');
     buffer.writeln('}');
     buffer.writeln();
@@ -1084,17 +1116,33 @@ buffer.writeln('  server.send(200, "text/plain", response);');
 buffer.writeln('  lastCommandTime = millis();');
 buffer.writeln('}');
     buffer.writeln();
-    buffer.writeln('void handleLedOn() {');
-    buffer.writeln('  ledState = true;');
-    buffer.writeln('  digitalWrite(CONTROL_PIN, HIGH);');
-    buffer.writeln('  server.send(200, "text/plain", "ON");');
-    buffer.writeln('}');
-    buffer.writeln();
-    buffer.writeln('void handleLedOff() {');
-    buffer.writeln('  ledState = false;');
-    buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
-    buffer.writeln('  server.send(200, "text/plain", "OFF");');
-    buffer.writeln('}');
+    if (device?.type == DeviceType.waterPump) {
+      buffer.writeln('void handleOn() {');
+      buffer.writeln('  digitalWrite(ON_PIN, HIGH);   // Activate ON relay');
+      buffer.writeln('  delay(100);');
+      buffer.writeln('  digitalWrite(ON_PIN, LOW);    // Pulse complete');
+      buffer.writeln('  server.send(200, "text/plain", "ON_PULSE_SENT");');
+      buffer.writeln('}');
+      buffer.writeln();
+      buffer.writeln('void handleOff() {');
+      buffer.writeln('  digitalWrite(OFF_PIN, HIGH);  // Activate OFF relay');
+      buffer.writeln('  delay(100);');
+      buffer.writeln('  digitalWrite(OFF_PIN, LOW);   // Pulse complete');
+      buffer.writeln('  server.send(200, "text/plain", "OFF_PULSE_SENT");');
+      buffer.writeln('}');
+    } else {
+      buffer.writeln('void handleOn() {');
+      buffer.writeln('  ledState = true;');
+      buffer.writeln('  digitalWrite(CONTROL_PIN, HIGH);');
+      buffer.writeln('  server.send(200, "text/plain", "ON");');
+      buffer.writeln('}');
+      buffer.writeln();
+      buffer.writeln('void handleOff() {');
+      buffer.writeln('  ledState = false;');
+      buffer.writeln('  digitalWrite(CONTROL_PIN, LOW);');
+      buffer.writeln('  server.send(200, "text/plain", "OFF");');
+      buffer.writeln('}');
+    }
     
     if (!isParent && device?.parentId != null) {
       buffer.writeln();
