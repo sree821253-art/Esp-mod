@@ -1030,7 +1030,6 @@ const int STATUS_PIN = $statusPin;
     
     buffer.writeln();
     buffer.writeln(pinDeclarations);
-    buffer.writeln('const int STATUS_PIN = $statusPin;');
     buffer.writeln('bool ledState = false;');
     buffer.writeln();
     
