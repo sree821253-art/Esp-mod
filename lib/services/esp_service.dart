@@ -246,52 +246,38 @@ class EspService {
   // Turn device ON
   // Turn device ON
   Future<bool> turnDeviceOn(String ipAddress, String deviceName) async {
-    try {
-      // Try /<deviceName>/on first
-      var response = await http
-          .get(Uri.parse('http://$ipAddress/$deviceName/on'))
-          .timeout(_timeout);
-      
-      if (response.statusCode == 200) return true;
-      
-      // Fallback to /<deviceName>/1
-      response = await http
-          .get(Uri.parse('http://$ipAddress/$deviceName/1'))
-          .timeout(_timeout);
-      
-      return response.statusCode == 200;
-    } catch (e) {
-      if (kDebugMode) {
-        print('ERROR turning ON device at $ipAddress/$deviceName: $e');
-      }
-      return false;
+  try {
+    // For motor: activate ON relay
+    final response = await http
+        .get(Uri.parse('http://$ipAddress/$deviceName.on/1'))
+        .timeout(_timeout);
+    
+    return response.statusCode == 200;
+  } catch (e) {
+    if (kDebugMode) {
+      print('ERROR turning ON device at $ipAddress/$deviceName.on/1: $e');
     }
+    return false;
   }
+}
 
   // Turn device OFF
   // Turn device OFF
   Future<bool> turnDeviceOff(String ipAddress, String deviceName) async {
-    try {
-      // Try /<deviceName>/off first
-      var response = await http
-          .get(Uri.parse('http://$ipAddress/$deviceName/off'))
-          .timeout(_timeout);
-      
-      if (response.statusCode == 200) return true;
-      
-      // Fallback to /<deviceName>/0
-      response = await http
-          .get(Uri.parse('http://$ipAddress/$deviceName/0'))
-          .timeout(_timeout);
-      
-      return response.statusCode == 200;
-    } catch (e) {
-      if (kDebugMode) {
-        print('ERROR turning OFF device at $ipAddress/$deviceName: $e');
-      }
-      return false;
+  try {
+    // For motor: activate OFF relay
+    final response = await http
+        .get(Uri.parse('http://$ipAddress/$deviceName.off/1'))
+        .timeout(_timeout);
+    
+    return response.statusCode == 200;
+  } catch (e) {
+    if (kDebugMode) {
+      print('ERROR turning OFF device at $ipAddress/$deviceName.off/1: $e');
     }
+    return false;
   }
+}
 
   // Toggle device state
   // Toggle device state
