@@ -127,68 +127,71 @@ class Device {
         createdAt = createdAt ?? DateTime.now();
 
   Device copyWith({
-    String? id,
-    String? name,
-    DeviceType? type,
-    String? ipAddress,
-    int? gpioPin,
-    int? onPin,              // NEW
-    int? offPin,             // NEW
-    int? statusGpioPin,
-    String? roomId,
-    bool? isParent,
-    String? parentId,
-    String? childIp,
-    bool? sensorViaChild,      // NEW
-    String? staticIP,
-    bool? isOn,
-    bool? physicalSwitchOn,
-    bool? isOnline,
-    int? batteryLevel,
-    bool? hasBattery,
-    int? childBatteryLevel,    // NEW
-    bool? hasChildBattery,     // NEW
-    int? brightness,
-    int? fanSpeed,
-    int? waterLevel,
-    double? lpgValue,
-    double? coValue,
-    bool? notificationsEnabled,
-    DateTime? lastSeen,
-    DateTime? createdAt,
-  }) {
-    return Device(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      type: type ?? this.type,
-      ipAddress: ipAddress ?? this.ipAddress,
-      gpioPin: gpioPin ?? this.gpioPin,
-      onPin: onPin ?? this.onPin,                    // NEW
-      offPin: offPin ?? this.offPin,                  // NEW
-      statusGpioPin: statusGpioPin ?? this.statusGpioPin,
-      roomId: roomId ?? this.roomId,
-      isParent: isParent ?? this.isParent,
-      parentId: parentId ?? this.parentId,
-      childIp: childIp ?? this.childIp,
-      sensorViaChild: sensorViaChild ?? this.sensorViaChild,  // NEW
-      staticIP: staticIP ?? this.staticIP,
-      isOn: isOn ?? this.isOn,
-      physicalSwitchOn: physicalSwitchOn ?? this.physicalSwitchOn,
-      isOnline: isOnline ?? this.isOnline,
-      batteryLevel: batteryLevel ?? this.batteryLevel,
-      hasBattery: hasBattery ?? this.hasBattery,
-      childBatteryLevel: childBatteryLevel ?? this.childBatteryLevel,  // NEW
-      hasChildBattery: hasChildBattery ?? this.hasChildBattery,        // NEW
-      brightness: brightness ?? this.brightness,
-      fanSpeed: fanSpeed ?? this.fanSpeed,
-      waterLevel: waterLevel ?? this.waterLevel,
-      lpgValue: lpgValue ?? this.lpgValue,
-      coValue: coValue ?? this.coValue,
-      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
-      lastSeen: lastSeen ?? this.lastSeen,
-      createdAt: createdAt ?? this.createdAt,
-    );
-  }
+  String? id,
+  String? name,
+  DeviceType? type,
+  String? ipAddress,
+  int? gpioPin,
+  int? onPin,
+  int? offPin,
+  int? statusGpioPin,
+  String? roomId,
+  bool? isParent,
+  String? parentId,
+  String? childIp,
+  bool? sensorViaChild,
+  String? staticIP,
+  bool? isOn,
+  bool? physicalSwitchOn,
+  bool? isOnline,  // ← This is the problematic one
+  int? batteryLevel,
+  bool? hasBattery,
+  int? childBatteryLevel,
+  bool? hasChildBattery,
+  int? brightness,
+  int? fanSpeed,
+  int? waterLevel,
+  double? lpgValue,
+  double? coValue,
+  bool? notificationsEnabled,
+  DateTime? lastSeen,
+  DateTime? createdAt,
+}) {
+  return Device(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    type: type ?? this.type,
+    ipAddress: ipAddress ?? this.ipAddress,
+    gpioPin: gpioPin ?? this.gpioPin,
+    onPin: onPin ?? this.onPin,
+    offPin: offPin ?? this.offPin,
+    statusGpioPin: statusGpioPin ?? this.statusGpioPin,
+    roomId: roomId ?? this.roomId,
+    isParent: isParent ?? this.isParent,
+    parentId: parentId ?? this.parentId,
+    childIp: childIp ?? this.childIp,
+    sensorViaChild: sensorViaChild ?? this.sensorViaChild,
+    staticIP: staticIP ?? this.staticIP,
+    
+    // FIX: Use explicit null checks for booleans
+    isOn: isOn != null ? isOn : this.isOn,
+    physicalSwitchOn: physicalSwitchOn != null ? physicalSwitchOn : this.physicalSwitchOn,
+    isOnline: isOnline != null ? isOnline : this.isOnline,  // ← CRITICAL FIX
+    hasBattery: hasBattery != null ? hasBattery : this.hasBattery,
+    hasChildBattery: hasChildBattery != null ? hasChildBattery : this.hasChildBattery,
+    notificationsEnabled: notificationsEnabled != null ? notificationsEnabled : this.notificationsEnabled,
+    
+    batteryLevel: batteryLevel ?? this.batteryLevel,
+    childBatteryLevel: childBatteryLevel ?? this.childBatteryLevel,
+    brightness: brightness ?? this.brightness,
+    fanSpeed: fanSpeed ?? this.fanSpeed,
+    waterLevel: waterLevel ?? this.waterLevel,
+    lpgValue: lpgValue ?? this.lpgValue,
+    coValue: coValue ?? this.coValue,
+    lastSeen: lastSeen ?? this.lastSeen,
+    createdAt: createdAt ?? this.createdAt,
+  );
+}
 
   Map<String, dynamic> toJson() => {
         'id': id,
