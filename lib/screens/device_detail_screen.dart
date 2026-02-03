@@ -211,6 +211,13 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                             ),
                             if (device.statusGpioPin != null)
                               _InfoRow(
+                                icon: Icons.sensors,
+                                label: 'Physical Switch Pin',
+                                value: 'GPIO ${device.statusGpioPin}',
+                                color: AppTheme.neonCyan,
+                              ),
+                            if (device.statusGpioPin != null)
+                              _InfoRow(
                                 icon: device.physicalSwitchOn
                                     ? Icons.toggle_on
                                     : Icons.toggle_off,
