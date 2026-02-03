@@ -496,15 +496,40 @@ class _DeviceDetailScreenState extends State<DeviceDetailScreen> {
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: gpioController,
-                  decoration: const InputDecoration(
-                    labelText: 'GPIO Pin',
-                    prefixIcon: Icon(Icons.memory),
-                    hintText: 'e.g., 2',
+                // Motor-specific or standard GPIO
+                if (device.type == DeviceType.waterPump) ...[
+                  TextField(
+                    controller: TextEditingController(text: device.onPin?.toString() ?? ''),
+                    decoration: const InputDecoration(
+                      labelText: 'ON Pin',
+                      prefixIcon: Icon(Icons.power),
+                      hintText: 'e.g., 14',
+                    ),
+                    keyboardType: TextInputType.number,
+                    enabled: false, // Read-only in edit for now
                   ),
-                  keyboardType: TextInputType.number,
-                ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: TextEditingController(text: device.offPin?.toString() ?? ''),
+                    decoration: const InputDecoration(
+                      labelText: 'OFF Pin',
+                      prefixIcon: Icon(Icons.power_off),
+                      hintText: 'e.g., 27',
+                    ),
+                    keyboardType: TextInputType.number,
+                    enabled: false, // Read-only in edit for now
+                  ),
+                ] else ...[
+                  TextField(
+                    controller: gpioController,
+                    decoration: const InputDecoration(
+                      labelText: 'GPIO Pin',
+                      prefixIcon: Icon(Icons.memory),
+                      hintText: 'e.g., 2',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ],
                 const SizedBox(height: 16),
                 TextField(
                   controller: statusGpioController,
