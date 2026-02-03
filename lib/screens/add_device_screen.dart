@@ -22,12 +22,15 @@ class _AddDeviceScreenState extends State<AddDeviceScreen> {
   final _ipController = TextEditingController();
   final _gpioController = TextEditingController();
   final _statusGpioController = TextEditingController();
+  final _onPinController = TextEditingController();      // NEW
+  final _offPinController = TextEditingController();     // NEW
   final _childIpController = TextEditingController();
 
   DeviceType _selectedType = DeviceType.light;
   String? _selectedRoomId;
   bool _hasBattery = false;
   bool _hasChildBattery = false;
+  bool _sensorViaChild = false;  // NEW
 
   @override
   void initState() {
