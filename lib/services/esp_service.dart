@@ -6,7 +6,6 @@ enum DeviceConnectionState { connected, disconnected, connecting }
 
 class EspService {
   static const Duration _timeout = Duration(seconds: 3);
-  static const Duration _longTimeout = Duration(seconds: 8); // For ON commands with delay
 
   // Test connection to a device
   Future<bool> testConnection(String ipAddress) async {
@@ -21,7 +20,7 @@ class EspService {
     }
   }
 
-  // Get device status - ENHANCED with physical switch and battery
+  // Get device status - reads ACTUAL physical switch state
   Future<Map<String, dynamic>?> getDeviceStatus(String ipAddress, String deviceName) async {
     try {
       final response = await http
@@ -33,8 +32,8 @@ class EspService {
         
         if (kDebugMode) {
           print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          print('ESP RESPONSE from $ipAddress');
-          print('Raw body: "$body"');
+          print('ESP STATUS from $ipAddress');
+          print('Raw: "$body"');
         }
         
         final Map<String, dynamic> status = {
@@ -45,7 +44,7 @@ class EspService {
           'timestamp': DateTime.now().toIso8601String(),
         };
         
-        // Parse response: "relay:on,switch:on,battery:85,water:0,brightness:0"
+        // Parse: "relay:on,switch:on,battery:85,water:0,brightness:0"
         final parts = body.toLowerCase().split(',');
         
         for (final part in parts) {
@@ -57,20 +56,22 @@ class EspService {
               
               switch (key) {
                 case 'relay':
+                  // Relay state (what motor should be doing)
                   status['isOn'] = value == 'on' || value == '1';
-                  if (kDebugMode) print('  → isOn: ${status['isOn']}');
                   break;
                   
                 case 'switch':
+                  // Physical switch state (what motor IS actually doing)
                   status['physicalSwitchOn'] = value == 'on' || value == '1';
-                  if (kDebugMode) print('  → physicalSwitchOn: ${status['physicalSwitchOn']}');
+                  // IMPORTANT: Use physical switch as source of truth
+                  status['isOn'] = value == 'on' || value == '1';
+                  if (kDebugMode) print('  → Motor actually: ${status['isOn'] ? "RUNNING" : "STOPPED"}');
                   break;
                   
                 case 'battery':
                   final battery = int.tryParse(value);
                   if (battery != null && battery > 0) {
                     status['batteryLevel'] = battery;
-                    if (kDebugMode) print('  → batteryLevel: $battery%');
                   }
                   break;
                   
@@ -79,21 +80,6 @@ class EspService {
                   final waterLevel = int.tryParse(value);
                   if (waterLevel != null) {
                     status['waterLevel'] = waterLevel;
-                    if (kDebugMode) print('  → waterLevel: $waterLevel');
-                  }
-                  break;
-                  
-                case 'brightness':
-                  final brightness = int.tryParse(value);
-                  if (brightness != null && brightness > 0) {
-                    status['brightness'] = brightness;
-                  }
-                  break;
-                  
-                case 'speed':
-                  final speed = int.tryParse(value);
-                  if (speed != null && speed > 0) {
-                    status['fanSpeed'] = speed;
                   }
                   break;
               }
@@ -102,8 +88,7 @@ class EspService {
         }
         
         if (kDebugMode) {
-          print('Final parsed status:');
-          status.forEach((key, value) => print('  $key: $value'));
+          print('Final: isOn=${status['isOn']}, physicalSwitch=${status['physicalSwitchOn']}, battery=${status['batteryLevel']}');
           print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
         }
         
@@ -127,7 +112,7 @@ class EspService {
     try {
       onStatusUpdate?.call('Sending ON command...');
       
-      // Send ON command
+      // Send ON command (ESP32 will wait 5 seconds before pulsing relay)
       final response = await http
           .get(Uri.parse('http://$ipAddress/$deviceName.on/1'))
           .timeout(_timeout);
@@ -136,35 +121,44 @@ class EspService {
         return {'success': false, 'message': 'Command failed'};
       }
       
-      onStatusUpdate?.call('Command sent, waiting for relay activation...');
+      onStatusUpdate?.call('Command sent, motor will start in 5 seconds...');
       
-      // Poll for physical switch to turn ON (max 8 seconds)
+      // Poll for physical switch to turn ON
+      // ESP32 has 5 second delay, so we poll for up to 8 seconds total
       final startTime = DateTime.now();
-      const maxWait = Duration(seconds: 8);
+      const maxWait = Duration(seconds: 10); // Increased to 10 seconds
       const pollInterval = Duration(milliseconds: 500);
       
+      int pollCount = 0;
       while (DateTime.now().difference(startTime) < maxWait) {
         await Future.delayed(pollInterval);
+        pollCount++;
         
         final status = await getDeviceStatus(ipAddress, deviceName);
         
-        if (status != null && status['physicalSwitchOn'] == true) {
-          onStatusUpdate?.call('✅ Motor started successfully');
-          return {
-            'success': true,
-            'isOn': true,
-            'physicalSwitchOn': true,
-            'batteryLevel': status['batteryLevel'],
-          };
+        if (status != null) {
+          // Check if physical switch is ON
+          if (status['physicalSwitchOn'] == true) {
+            onStatusUpdate?.call('✅ Motor started successfully');
+            return {
+              'success': true,
+              'isOn': true,
+              'physicalSwitchOn': true,
+              'batteryLevel': status['batteryLevel'],
+            };
+          }
+          
+          // Show progress
+          final elapsed = DateTime.now().difference(startTime).inSeconds;
+          if (elapsed <= 5) {
+            onStatusUpdate?.call('Motor will start in ${5 - elapsed} seconds...');
+          } else {
+            onStatusUpdate?.call('Waiting for motor to start... (${elapsed}s)');
+          }
         }
-        
-        // Update progress
-        final elapsed = DateTime.now().difference(startTime).inMilliseconds;
-        final progress = (elapsed / maxWait.inMilliseconds * 100).toInt();
-        onStatusUpdate?.call('Waiting for motor to start... $progress%');
       }
       
-      // Timeout - check one last time
+      // Timeout - one final check
       final finalStatus = await getDeviceStatus(ipAddress, deviceName);
       if (finalStatus != null && finalStatus['physicalSwitchOn'] == true) {
         onStatusUpdate?.call('✅ Motor started');
@@ -176,19 +170,19 @@ class EspService {
         };
       }
       
-      onStatusUpdate?.call('❌ Motor did not start (timeout)');
+      onStatusUpdate?.call('❌ Motor did not start (timeout after 10s)');
       return {'success': false, 'message': 'Physical switch did not activate'};
       
     } catch (e) {
       if (kDebugMode) {
-        print('ERROR turning ON device at $ipAddress: $e');
+        print('ERROR turning ON device: $e');
       }
       onStatusUpdate?.call('❌ Error: $e');
       return {'success': false, 'message': e.toString()};
     }
   }
 
-  // Turn device OFF - WITH POLLING for physical switch confirmation
+  // Turn device OFF - WITH POLLING for confirmation
   Future<Map<String, dynamic>> turnDeviceOff(
     String ipAddress, 
     String deviceName,
@@ -197,7 +191,7 @@ class EspService {
     try {
       onStatusUpdate?.call('Sending OFF command...');
       
-      // Send OFF command - should be INSTANT on ESP32
+      // Send OFF command (ESP32 executes immediately)
       final response = await http
           .get(Uri.parse('http://$ipAddress/$deviceName.off/1'))
           .timeout(_timeout);
@@ -206,11 +200,11 @@ class EspService {
         return {'success': false, 'message': 'Command failed'};
       }
       
-      onStatusUpdate?.call('Command sent, confirming motor stopped...');
+      onStatusUpdate?.call('Stopping motor...');
       
-      // Poll for physical switch to turn OFF (max 3 seconds for OFF)
+      // Poll for physical switch to turn OFF
       final startTime = DateTime.now();
-      const maxWait = Duration(seconds: 3);
+      const maxWait = Duration(seconds: 5); // Longer timeout for OFF
       const pollInterval = Duration(milliseconds: 300);
       
       while (DateTime.now().difference(startTime) < maxWait) {
@@ -218,14 +212,17 @@ class EspService {
         
         final status = await getDeviceStatus(ipAddress, deviceName);
         
-        if (status != null && status['physicalSwitchOn'] == false) {
-          onStatusUpdate?.call('✅ Motor stopped successfully');
-          return {
-            'success': true,
-            'isOn': false,
-            'physicalSwitchOn': false,
-            'batteryLevel': status['batteryLevel'],
-          };
+        if (status != null) {
+          // Check if physical switch is OFF
+          if (status['physicalSwitchOn'] == false) {
+            onStatusUpdate?.call('✅ Motor stopped successfully');
+            return {
+              'success': true,
+              'isOn': false,
+              'physicalSwitchOn': false,
+              'batteryLevel': status['batteryLevel'],
+            };
+          }
         }
       }
       
@@ -246,7 +243,7 @@ class EspService {
       
     } catch (e) {
       if (kDebugMode) {
-        print('ERROR turning OFF device at $ipAddress: $e');
+        print('ERROR turning OFF device: $e');
       }
       onStatusUpdate?.call('❌ Error: $e');
       return {'success': false, 'message': e.toString()};
@@ -267,7 +264,7 @@ class EspService {
     }
   }
 
-  // Set brightness for lights (if your ESP supports PWM)
+  // Set brightness for lights
   Future<bool> setBrightness(String ipAddress, String deviceName, int brightness) async {
     try {
       final response = await http
@@ -280,7 +277,7 @@ class EspService {
     }
   }
 
-  // Set fan speed (if your ESP supports it)
+  // Set fan speed
   Future<bool> setFanSpeed(String ipAddress, String deviceName, int speed) async {
     try {
       final response = await http
@@ -290,27 +287,6 @@ class EspService {
       return response.statusCode == 200;
     } catch (e) {
       return false;
-    }
-  }
-
-  // Get sensor data (for gas sensors, water pumps, etc.)
-  Future<Map<String, dynamic>?> getSensorData(String ipAddress) async {
-    try {
-      final response = await http
-          .get(Uri.parse('http://$ipAddress/sensors'))
-          .timeout(_timeout);
-      
-      if (response.statusCode == 200) {
-        return {
-          'lpg': 0.0,
-          'co': 0.0,
-          'waterLevel': 50,
-          'battery': 100,
-        };
-      }
-      return null;
-    } catch (e) {
-      return null;
     }
   }
 
